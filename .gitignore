@@ -1,0 +1,50 @@
+/node_modules
+/public/hot
+/public/storage
+/public/themes
+#/storage/*.key
+# storage/app committed on purpose: default + demo images must ship to server (git-pull deploy, no upload step)
+# storage/framework/cache contents ignored via storage/framework/cache/.gitignore keepfiles
+# vendor/ is committed on purpose: cPanel deploys via git pull with no composer available
+/storage/logs/*.log
+/bootstrap/cache/*.php
+*.zip
+.rnd
+.vscode
+.idea
+.idea/*
+.env
+.env.backup
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+composer-setup.php
+.DS_Store
+*.map
+style.css.map
+style-extended.css.map
+temp-data-folder/
+/Modules/Gateways
+/public/Modules/Gateways
+.claude/settings.local.json
+.claude/memory/
+Modules/Auction/AUDIT_REPORT.md
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/tests-e2e/
+/playwright.config.ts
+/Modules/Auction/AI_AUCTION_BEST_OUTPUT_PROMPT.md
+/Modules/Auction/QUEUE_SETUP.md
+/Modules/Auction/QUEUE_SETUP_NO_VPS.md
+/Modules/Auction/AUCTION_STATE_CONSISTENCY.md
+/Modules/Auction/QUEUE.md
+/Modules/Auction/SUPERVISOR_SETUP_GUIDE.md
+/issues

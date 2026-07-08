@@ -1,0 +1,375 @@
+<?php
+
+namespace Devrabiul\ToastMagic;
+
+use Illuminate\Contracts\Config\Repository;
+use Illuminate\Session\SessionManager as Session;
+use Illuminate\Config\Repository as Config;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\Facades\File;
+
+/**
+ * Class ToastMagic
+ *
+ * This class handles the management of toast notifications in a Laravel application.
+ * It provides methods to add flash messages to the session and render the necessary
+ * styles and scripts for displaying these messages.
+ */
+class ToastMagic
+{
+    /**
+     * The session manager.
+     *
+     * @var \Illuminate\Session\SessionManager
+     */
+    protected $session;
+
+    /**
+     * The Config Handler.
+     *
+     * @var Repository
+     */
+    protected $config;
+
+    /**
+     * The messages stored in the session.
+     *
+     * @var array
+     */
+    protected array $messages = [];
+
+    /**
+     * The JavaScript type for script tags.
+     *
+     * @var string
+     */
+    protected string $jsType = 'text/javascript';
+
+    /**
+     * ToastMagic constructor.
+     *
+     * @param Session $session The session manager instance.
+     * @param Config $config The configuration repository instance.
+     */
+    function __construct(Session $session, Config $config)
+    {
+        $this->session = $session;
+        $this->config = $config;
+    }
+
+    /**
+     * Generate the HTML for the required styles.
+     *
+     * @return string The HTML link tag for the stylesheet.
+     */
+    public function styles(): string
+    {
+        $stylePath = 'packages/devrabiul/laravel-toaster-magic/css/laravel-toaster-magic.min.css';
+        if (File::exists(public_path($stylePath))) {
+            return '<link rel="stylesheet" href="' . $this->getDynamicAsset($stylePath) . '">';
+        }
+        return '<link rel="stylesheet" href="' . url('vendor/devrabiul/laravel-toaster-magic/assets/css/laravel-toaster-magic.min.css') . '">';
+    }
+
+    /**
+     * Generate the HTML for the required scripts.
+     *
+     * @return string The HTML link tag for the scripts.
+     */
+    public function scriptsPath(): string
+    {
+        $config = (array)$this->config->get('laravel-toaster-magic');
+        $scripts = [];
+
+        if (!empty($config['livewire_enabled'])) {
+            $file1 = 'packages/devrabiul/laravel-toaster-magic/js/livewire-v3/laravel-toaster-magic.js';
+            $file2 = 'packages/devrabiul/laravel-toaster-magic/js/livewire-v3/livewire-toaster-magic-v3.js';
+            if (File::exists(public_path($file1)) && File::exists(public_path($file2))) {
+                $scripts[] = $this->scriptTag($file1);
+                $scripts[] = $this->scriptTag($file2);
+            }
+            return implode('', $scripts);
+        }
+
+        $defaultJsPath = 'packages/devrabiul/laravel-toaster-magic/js/laravel-toaster-magic.js';
+        if (File::exists(public_path($defaultJsPath))) {
+            return $this->scriptTag($defaultJsPath);
+        }
+
+        return $this->scriptTag('vendor/devrabiul/laravel-toaster-magic/assets/js/laravel-toaster-magic.js');
+    }
+
+    private function scriptTag(string $src): string
+    {
+        return '<script src="' . $this->getDynamicAsset($src) . '"></script>';
+    }
+
+    private function getDynamicAsset(string $path): string
+    {
+        if (config('laravel-toaster-magic.system_processing_directory') == 'public') {
+            $position = strpos($path, 'public/');
+            $result = $path;
+            if ($position === 0) {
+                $result = preg_replace('/public/', '', $path, 1);
+            }
+        } else if (
+            (str_contains(realpath(public_path()), 'public\public') ||
+            str_contains(realpath(public_path()), 'public/public')) &&
+            PHP_OS_FAMILY === 'Windows'
+        ) {
+            $result = 'public/' . $path;
+        } else {
+            $result = in_array(request()->ip(), ['127.0.0.1']) && (config('laravel-toaster-magic.system_processing_directory') != 'root') ? $path : 'public/' . $path;
+        }
+
+        return asset($result);
+    }
+
+    /**
+     * Generate the HTML for the required scripts and initialize toast messages.
+     *
+     * @return string The HTML script tags for the JavaScript.
+     */
+    public function scripts(): string
+    {
+        $messages = $this->session->get('laravel-toaster-magic::messages');
+
+        if (!$messages) $messages = [];
+
+        $config = (array)$this->config->get('laravel-toaster-magic.options');
+
+        $script = $this->scriptsPath();
+        $script .= '<script type="' . $this->jsType . '">';
+
+        // Output the config as a global JS object
+        $script .= 'window.toastMagicConfig = ' . json_encode($config, JSON_UNESCAPED_SLASHES) . ';';
+
+        $script .= 'document.addEventListener("DOMContentLoaded", function() {';
+        $script .= 'var toastContainer = document.querySelector(".toast-container");';
+
+        if (isset($config['theme']) && $config['theme'] != 'default') {
+            $script .= 'if (toastContainer) {';
+            $script .= 'toastContainer.classList.remove("theme-default");';
+            $script .= 'toastContainer.classList.add("theme-' . $config['theme'] . '");';
+            $script .= '}';
+        }
+
+        if (isset($config['gradient_enable']) && $config['gradient_enable']) {
+            $script .= 'if (toastContainer) {';
+            $script .= 'toastContainer.classList.add("toast-gradient-enable");';
+            $script .= '}';
+        }
+
+        if (isset($config['color_mode']) && $config['color_mode']) {
+            $script .= 'if (toastContainer) {';
+            $script .= 'toastContainer.classList.add("toast-color-true");';
+            $script .= '}';
+        }
+
+        $script .= 'if (toastContainer) {';
+        $script .= 'toastContainer.classList.remove("toast-top-start");';
+        $script .= 'toastContainer.classList.remove("toast-top-end");';
+        $script .= 'toastContainer.classList.remove("toast-top-center");';
+        $script .= 'toastContainer.classList.remove("toast-bottom-start");';
+        $script .= 'toastContainer.classList.remove("toast-bottom-end");';
+        $script .= 'toastContainer.classList.remove("toast-bottom-center");';
+        $script .= 'toastContainer.classList.add("' . ($config['positionClass'] ?? "toast-top-end") . '");';
+        $script .= '}';
+
+        $delay = 0; // Initial delay of 0ms
+
+        foreach ($messages as $message) {
+
+            $messageOptions = (array)($message['options'] ?? []);
+            if (count($messageOptions) == 0 || !array_key_exists('closeButton', $messageOptions)) {
+                $messageOptions['closeButton'] = $message['options']['closeButton'] ?? ($config['closeButton'] ?? false);
+            }
+
+            // Add a delay for each message
+            $messageText = $message['message'] ?? '';
+            $descriptionText = $message['description'] ?? '';
+
+            // Replace 2 or more consecutive newlines with a single newline
+            $messageText = preg_replace("/(\r\n|\r|\n){2,}/", "\n", $messageText);
+            $descriptionText = preg_replace("/(\r\n|\r|\n){2,}/", "\n", $descriptionText);
+
+            // Then convert remaining single newlines to <br>
+            $messageText = str_replace(["\r\n", "\r", "\n"], '<br>', $messageText);
+            $descriptionText = str_replace(["\r\n", "\r", "\n"], '<br>', $descriptionText);
+
+            // json_encode safely escapes quotes for JS
+            // Per-toast duration overrides; emit null so the JS falls back to the global config.
+            $timeOut = isset($messageOptions['timeOut']) ? (int)$messageOptions['timeOut'] : null;
+            $showDuration = isset($messageOptions['showDuration']) ? (int)$messageOptions['showDuration'] : null;
+
+            $script .= 'setTimeout(function() {';
+            $script .= 'toastMagic.' . $message['type'] . '('
+                . json_encode($messageText) . ', '
+                . json_encode($descriptionText) . ', '
+                . (!empty($messageOptions['closeButton']) ? 'true' : 'false') . ', '
+                . json_encode($messageOptions['customBtnText'] ?? '') . ', '
+                . json_encode($messageOptions['customBtnLink'] ?? '') . ', '
+                . ($timeOut === null ? 'null' : $timeOut) . ', '
+                . ($showDuration === null ? 'null' : $showDuration) . ', '
+                . json_encode($messageOptions['avatar'] ?? '') . ');';
+            $script .= '}, ' . $delay . ');';
+
+            // Increase the delay for the next message (500ms for each)
+            $delay += 1000;
+        }
+
+        $script .= '});'; // End of DOMContentLoaded
+
+        $script .= '</script>';
+
+        return $script;
+    }
+
+
+    /**
+     * Entry point for the fluent dispatch syntax.
+     *
+     * Returns the ToastMagic instance so toast types can be chained, e.g.
+     * `ToastMagic::dispatch()->success('User Created', 'The user has been created.')`.
+     * This is functionally equivalent to calling the type method directly
+     * (`ToastMagic::success(...)`); it exists to support a more expressive,
+     * self-documenting call style.
+     *
+     * @return self
+     */
+    public function dispatch(): self
+    {
+        return $this;
+    }
+
+    /**
+     * Add a flash message to the session.
+     *
+     * @param string $type Must be one of info, success, warning, error.
+     * @param string $message The flash message content.
+     * @param string|null $description Optional description for the message.
+     * @param array $options Optional custom options for the message.
+     *
+     * @return void
+     */
+    public function add(string $type, string $message, string|null $description = null, array $options = []): void
+    {
+        $types = ['error', 'info', 'success', 'warning'];
+
+        if (!in_array($type, $types)) {
+            $type = 'info'; // fallback 
+        }
+
+        $this->messages[] = [
+            'type' => $type,
+            'message' => $message,
+            'description' => $description,
+            'options' => $options,
+        ];
+
+        $this->session->flash('laravel-toaster-magic::messages', $this->messages);
+    }
+
+    /**
+     * Normalize a message into a string.
+     *
+     * Accepts a plain string or a validation {@see MessageBag}. A MessageBag is
+     * flattened into a single string with each message separated by a <br> tag.
+     *
+     * @param string|MessageBag $message
+     * @return string
+     */
+    protected function normalizeMessage(string|MessageBag $message): string
+    {
+        if ($message instanceof MessageBag) {
+            $messageString = "";
+            foreach ($message->getMessages() as $messageArray) {
+                foreach ($messageArray as $currentMessage) {
+                    $messageString .= $currentMessage . "<br>";
+                }
+            }
+
+            return preg_replace('/(<br>)+$/', '', $messageString);
+        }
+
+        return $message;
+    }
+
+    /**
+     * Add an info flash message to session.
+     *
+     * @param string|MessageBag $message The flash message content, or a validation MessageBag.
+     * @param string|null $description
+     * @param array $options The custom options.
+     *
+     * @return void
+     */
+    public function info(string|MessageBag $message, string|null $description = null, array $options = []): void
+    {
+        $this->add('info', $this->normalizeMessage($message), $description, $options);
+    }
+
+    /**
+     * Add a success flash message to session.
+     *
+     * @param string|MessageBag $message The flash message content, or a validation MessageBag.
+     * @param string|null $description
+     * @param array $options The custom options.
+     *
+     * @return void
+     */
+    public function success(string|MessageBag $message, string|null $description = null, array $options = []): void
+    {
+        $this->add('success', $this->normalizeMessage($message), $description, $options);
+    }
+
+    /**
+     * Add a warning flash message to session.
+     *
+     * @param string|MessageBag $message The flash message content, or a validation MessageBag.
+     * @param string|null $description
+     * @param array $options The custom options.
+     *
+     * @return void
+     */
+    public function warning(string|MessageBag $message, string|null $description = null, array $options = []): void
+    {
+        $this->add('warning', $this->normalizeMessage($message), $description, $options);
+    }
+
+    /**
+     * Add an error flash message to session.
+     *
+     * @param string|MessageBag $message The flash message content, or a validation MessageBag.
+     * @param string|null $description
+     * @param array $options The custom options.
+     *
+     * @return void
+     */
+    public function error(string|MessageBag $message, string|null $description = null, array $options = []): void
+    {
+        $this->add('error', $this->normalizeMessage($message), $description, $options);
+    }
+
+
+    /**
+     * Clear all queued toast messages, both in memory and in the session.
+     *
+     * @return void
+     */
+    public function clear(): void
+    {
+        $this->messages = [];
+        $this->session->forget('laravel-toaster-magic::messages');
+    }
+
+    /**
+     * Set js type to module for using vite
+     *
+     * @return void
+     */
+    public function useVite(): void
+    {
+        $this->jsType = 'module';
+    }
+}
