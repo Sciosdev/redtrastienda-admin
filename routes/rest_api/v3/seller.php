@@ -11,6 +11,7 @@ use App\Http\Controllers\RestAPI\v3\seller\DeliveryManCashCollectController;
 use App\Http\Controllers\RestAPI\v3\seller\DeliveryManController;
 use App\Http\Controllers\RestAPI\v3\seller\DeliverymanWithdrawController;
 use App\Http\Controllers\RestAPI\v3\seller\EmergencyContactController;
+use App\Http\Controllers\RestAPI\v3\seller\OpportunityRequestController;
 use App\Http\Controllers\RestAPI\v3\seller\OrderController;
 use App\Http\Controllers\RestAPI\v3\seller\OrderEditController;
 use App\Http\Controllers\RestAPI\v3\seller\POSCartController;
@@ -53,6 +54,12 @@ Route::group(['namespace' => 'RestAPI\v3\seller', 'prefix' => 'v3/seller', 'midd
     });
 
     Route::group(['middleware' => ['seller_api_auth']], function () {
+        Route::group(['prefix' => 'opportunity-requests'], function () {
+            Route::controller(OpportunityRequestController::class)->group(function () {
+                Route::get('list', 'receivedRequests');
+                Route::post('update-status', 'updateStatus');
+            });
+        });
         Route::controller(SellerController::class)->group(function () {
             Route::put('language-change', 'language_change');
             Route::get('seller-info', 'getSellerInfo');

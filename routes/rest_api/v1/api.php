@@ -23,6 +23,7 @@ use App\Http\Controllers\RestAPI\v1\FlashDealController;
 use App\Http\Controllers\RestAPI\v1\GeneralController;
 use App\Http\Controllers\RestAPI\v1\MapApiController;
 use App\Http\Controllers\RestAPI\v1\NotificationController;
+use App\Http\Controllers\RestAPI\v1\OpportunityRequestController;
 use App\Http\Controllers\RestAPI\v1\OrderController;
 use App\Http\Controllers\RestAPI\v1\OrderEditController;
 use App\Http\Controllers\RestAPI\v1\ProductController;
@@ -307,6 +308,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
             Route::controller(CustomerRestockRequestController::class)->group(function () {
                 Route::get('list', 'restockRequestsList');
                 Route::post('delete', 'deleteRestockRequests');
+            });
+        });
+
+        Route::group(['prefix' => 'opportunity-requests'], function () {
+            Route::controller(OpportunityRequestController::class)->group(function () {
+                Route::post('store', 'store');
+                Route::get('list', 'myRequests');
             });
         });
 
