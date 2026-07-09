@@ -482,6 +482,15 @@
                         <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('subscribers') }}</span></span>
                         <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="subscribers" aria-label="Pin"></button></div>
                     </a>
+
+                    <a class="v2-nav-item {{ Request::is('admin/numeros-anp*') ? 'v2-is-active' : '' }}" data-item="numeros-anp" href="{{ route('admin.numeros-anp.list') }}">
+                        <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('numeros_ANP') }}</span></span>
+                        <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="numeros-anp" aria-label="Pin"></button></div>
+                    </a>
+                    <a class="v2-nav-item {{ Request::is('admin/afiliados*') ? 'v2-is-active' : '' }}" data-item="afiliados-anp" href="{{ route('admin.afiliados.list') }}">
+                        <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('afiliados_ANP') }}</span></span>
+                        <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="afiliados-anp" aria-label="Pin"></button></div>
+                    </a>
                 </div>
 
                 <div class="v2-ctx-group">

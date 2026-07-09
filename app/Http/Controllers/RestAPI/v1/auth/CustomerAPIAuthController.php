@@ -5,7 +5,9 @@ namespace App\Http\Controllers\RestAPI\v1\auth;
 use App\Contracts\Repositories\BusinessSettingRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\LoginSetupRepositoryInterface;
+use App\Contracts\Repositories\NumeroAnpRepositoryInterface;
 use App\Contracts\Repositories\PhoneOrEmailVerificationRepositoryInterface;
+use App\Services\AffiliateProfileService;
 use App\Events\CustomerRegisteredViaReferralEvent;
 use App\Events\EmailVerificationEvent;
 use App\Events\PasswordResetEvent;
@@ -37,6 +39,8 @@ class CustomerAPIAuthController extends Controller
         private readonly LoginSetupRepositoryInterface               $loginSetupRepo,
         private readonly CustomerAuthService                         $customerAuthService,
         private readonly ReferByEarnCustomerService                  $referByEarnCustomerService,
+        private readonly NumeroAnpRepositoryInterface                $numeroAnpRepo,
+        private readonly AffiliateProfileService                     $affiliateProfileService,
     )
     {
     }
@@ -58,21 +62,35 @@ class CustomerAPIAuthController extends Controller
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
+        $anpResolution = $this->resolveNumeroAnpForRegistration($request);
+        if ($anpResolution['error']) {
+            return $anpResolution['error'];
+        }
+        $numeroAnp = $anpResolution['numero'];
+
         $referUser = $request['referral_code'] ? $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]) : null;
 
         $temporaryToken = Str::random(40);
 
-        $user = $this->customerRepo->add([
-            'name' => $request['f_name'] . ' ' . $request['l_name'],
-            'f_name' => $request['f_name'],
-            'l_name' => $request['l_name'],
-            'email' => $request['email'],
-            'phone' => $request['phone'],
-            'password' => bcrypt($request['password']),
-            'temporary_token' => $temporaryToken,
-            'referral_code' => Helpers::generate_referer_code(),
-            'referred_by' => $referUser?->id ?? null,
-        ]);
+        $user = DB::transaction(function () use ($request, $referUser, $temporaryToken, $numeroAnp) {
+            $user = $this->customerRepo->add([
+                'name' => $request['f_name'] . ' ' . $request['l_name'],
+                'f_name' => $request['f_name'],
+                'l_name' => $request['l_name'],
+                'email' => $request['email'],
+                'phone' => $request['phone'],
+                'password' => bcrypt($request['password']),
+                'temporary_token' => $temporaryToken,
+                'referral_code' => Helpers::generate_referer_code(),
+                'referred_by' => $referUser?->id ?? null,
+            ]);
+
+            if ($numeroAnp) {
+                $this->affiliateProfileService->createProfileAndConsumeAnp(request: $request, user: $user, numeroAnp: $numeroAnp);
+            }
+
+            return $user;
+        });
 
         $referralData = getWebConfig(name: 'ref_earning_customer');
         $referralEarningRate = $this->businessSettingRepo->getFirstWhere(params: ['type' => 'ref_earning_exchange_rate']);
@@ -450,22 +468,34 @@ class CustomerAPIAuthController extends Controller
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
-        if ($request['referral_code']) {
-            $refer_user = $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]);
+        $anpResolution = $this->resolveNumeroAnpForRegistration($request);
+        if ($anpResolution['error']) {
+            return $anpResolution['error'];
         }
+        $numeroAnp = $anpResolution['numero'];
+
+        $refer_user = $request['referral_code'] ? $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]) : null;
 
         $temporaryToken = Str::random(40);
 
-        $user = $this->customerRepo->add([
-            'f_name' => $request['f_name'],
-            'l_name' => $request['l_name'],
-            'email' => $request['email'],
-            'phone' => $request['phone'],
-            'password' => bcrypt($request['password']),
-            'temporary_token' => $temporaryToken,
-            'referral_code' => Helpers::generate_referer_code(),
-            'referred_by' => $refer_user->id ?? null,
-        ]);
+        $user = DB::transaction(function () use ($request, $refer_user, $temporaryToken, $numeroAnp) {
+            $user = $this->customerRepo->add([
+                'f_name' => $request['f_name'],
+                'l_name' => $request['l_name'],
+                'email' => $request['email'],
+                'phone' => $request['phone'],
+                'password' => bcrypt($request['password']),
+                'temporary_token' => $temporaryToken,
+                'referral_code' => Helpers::generate_referer_code(),
+                'referred_by' => $refer_user->id ?? null,
+            ]);
+
+            if ($numeroAnp) {
+                $this->affiliateProfileService->createProfileAndConsumeAnp(request: $request, user: $user, numeroAnp: $numeroAnp);
+            }
+
+            return $user;
+        });
 
         $emailVerification = getLoginConfig(key: 'email_verification') ?? 0;
         $phoneVerification = getLoginConfig(key: 'phone_verification') ?? 0;
@@ -629,20 +659,34 @@ class CustomerAPIAuthController extends Controller
             }
         }
 
+        $anpResolution = $this->resolveNumeroAnpForRegistration($request);
+        if ($anpResolution['error']) {
+            return $anpResolution['error'];
+        }
+        $numeroAnp = $anpResolution['numero'];
+
         $temporaryToken = Str::random(40);
 
-        $user = $this->customerRepo->add([
-            'name' => $request['name'],
-            'f_name' => $request['name'],
-            'email' => $request['email'],
-            'phone' => $request['phone'],
-            'password' => bcrypt(rand(11111111, 99999999)),
-            'temporary_token' => $temporaryToken,
-            'app_language' => 'en',
-            'is_phone_verified' => 1,
-            'referral_code' => Helpers::generate_referer_code(),
-            'login_medium' => 'OTP',
-        ]);
+        $user = DB::transaction(function () use ($request, $temporaryToken, $numeroAnp) {
+            $user = $this->customerRepo->add([
+                'name' => $request['name'],
+                'f_name' => $request['name'],
+                'email' => $request['email'],
+                'phone' => $request['phone'],
+                'password' => bcrypt(rand(11111111, 99999999)),
+                'temporary_token' => $temporaryToken,
+                'app_language' => 'en',
+                'is_phone_verified' => 1,
+                'referral_code' => Helpers::generate_referer_code(),
+                'login_medium' => 'OTP',
+            ]);
+
+            if ($numeroAnp) {
+                $this->affiliateProfileService->createProfileAndConsumeAnp(request: $request, user: $user, numeroAnp: $numeroAnp);
+            }
+
+            return $user;
+        });
 
         $token = $user->createToken('LaravelAuthApp')->accessToken;
         return response()->json(['token' => $token], 200);
@@ -977,6 +1021,74 @@ class CustomerAPIAuthController extends Controller
             'token' => $request['token'],
         ]);
         return response()->json(['message' => translate('Token_is_successfully_Saved')], 200);
+    }
+
+    public function checkNumeroAnp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'numero_anp' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $numero = $this->numeroAnpRepo->getFirstWhere(params: ['numero_anp' => trim($request['numero_anp'])]);
+        $existe = (bool)$numero;
+        $disponible = $existe && $numero->estatus === 'disponible';
+
+        return response()->json([
+            'existe' => $existe,
+            'disponible' => $disponible,
+            'message' => !$existe
+                ? translate('numero_anp_invalido')
+                : ($disponible ? translate('numero_anp_disponible') : translate('numero_anp_no_disponible')),
+        ], 200);
+    }
+
+    /**
+     * Validate the ANP number for a registration request.
+     * Returns ['error' => JsonResponse|null, 'numero' => NumeroAnp|null].
+     * - No ANP + toggle off  => proceed as legacy (numero null).
+     * - No ANP + toggle on    => validation error.
+     * - ANP present           => must exist and be "disponible".
+     */
+    private function resolveNumeroAnpForRegistration(Request $request): array
+    {
+        $numeroAnp = trim((string)($request['numero_anp'] ?? ''));
+        $obligatorio = (int)($this->businessSettingRepo->getFirstWhere(params: ['type' => 'numero_anp_obligatorio'])?->value ?? 0) === 1;
+
+        if ($numeroAnp === '') {
+            if ($obligatorio) {
+                return [
+                    'error' => response()->json(['errors' => [
+                        ['code' => 'numero_anp', 'message' => translate('el_numero_anp_es_obligatorio')]
+                    ]], 403),
+                    'numero' => null,
+                ];
+            }
+            return ['error' => null, 'numero' => null];
+        }
+
+        $numero = $this->numeroAnpRepo->getFirstWhere(params: ['numero_anp' => $numeroAnp]);
+        if (!$numero) {
+            return [
+                'error' => response()->json(['errors' => [
+                    ['code' => 'numero_anp', 'message' => translate('numero_anp_invalido')]
+                ]], 403),
+                'numero' => null,
+            ];
+        }
+        if ($numero->estatus !== 'disponible') {
+            return [
+                'error' => response()->json(['errors' => [
+                    ['code' => 'numero_anp', 'message' => translate('numero_anp_no_disponible')]
+                ]], 403),
+                'numero' => null,
+            ];
+        }
+
+        return ['error' => null, 'numero' => $numero];
     }
 
 }

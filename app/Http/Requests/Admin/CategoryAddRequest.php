@@ -32,7 +32,6 @@ class CategoryAddRequest extends FormRequest
     {
         return [
             'name' => 'required|array',
-            'name.0' => 'required',
             'image' => getRulesStringForImageValidation(
                 rules: ['required', 'image'],
                 skipMimes: ['.svg'],
@@ -59,7 +58,15 @@ class CategoryAddRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                if (isset($this['name'][0]) && Category::where(['name' => $this['name'][0], 'position' => $this['position']])->first()) {
+                $name = $this->getDefaultName();
+
+                if (empty($name)) {
+                    $validator->errors()->add(
+                        'name', translate('the_name_field_is_required')
+                    );
+                }
+
+                if (!empty($name) && Category::where(['name' => $name, 'position' => $this['position']])->first()) {
                     $validator->errors()->add(
                         'name.unique', translate('The_category_has_already_been_taken') . '!'
                     );
@@ -75,6 +82,25 @@ class CategoryAddRequest extends FormRequest
                 }
             }
         ];
+    }
+
+    private function getDefaultName(): string
+    {
+        $names = $this->input('name', []);
+        $languages = $this->input('lang', []);
+        $englishIndex = array_search('en', $languages);
+
+        if ($englishIndex !== false && !empty(trim($names[$englishIndex] ?? ''))) {
+            return trim($names[$englishIndex]);
+        }
+
+        foreach ($names as $name) {
+            if (!empty(trim($name ?? ''))) {
+                return trim($name);
+            }
+        }
+
+        return '';
     }
 
 }

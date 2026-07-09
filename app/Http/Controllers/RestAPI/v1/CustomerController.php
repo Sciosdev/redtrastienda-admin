@@ -5,6 +5,7 @@ namespace App\Http\Controllers\RestAPI\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\v1\SupportTicketRequest;
 use App\Http\Requests\API\v1\UpdateProfileApiRequest;
+use App\Models\AffiliateProfile;
 use App\Models\BusinessSetting;
 use App\Models\DeliveryCountryCode;
 use App\Models\DeliveryZipCode;
@@ -66,6 +67,18 @@ class CustomerController extends Controller
         }
 
         return response()->json($user, 200);
+    }
+
+    public function affiliateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $profile = AffiliateProfile::where('customer_id', $user->id)->first();
+
+        if (!$profile) {
+            return response()->json(['message' => translate('affiliate_profile_not_found')], 404);
+        }
+
+        return response()->json($profile, 200);
     }
 
     public function create_support_ticket(SupportTicketRequest $request)

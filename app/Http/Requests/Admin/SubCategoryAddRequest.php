@@ -28,7 +28,7 @@ class SubCategoryAddRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'name' => 'required',
+            'name' => 'required|array',
             'priority' => 'required',
             'parent_id' => 'required'
         ];
@@ -42,6 +42,7 @@ class SubCategoryAddRequest extends FormRequest
     {
         return [
             'name.required' => translate('category_name_is_required'),
+            'name.array' => translate('category_name_is_required'),
             'priority.required' => translate('category_priority_is_required'),
             'parent_id.required' => translate('Main_Category_is_required'),
             'image.mimes' => translate('The_image_must_be_a_file_of_type_jpeg_jpg_png_gif'),
@@ -53,9 +54,17 @@ class SubCategoryAddRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
+                $name = $this->getDefaultName();
+
+                if (empty($name)) {
+                    $validator->errors()->add(
+                        'name', translate('the_name_field_is_required')
+                    );
+                }
+
                 if (
-                    isset($this['name'][0]) &&
-                    Category::where(['name' => $this['name'][0], 'position' => $this['position']])
+                    !empty($name) &&
+                    Category::where(['name' => $name, 'position' => $this['position']])
                         ->when(isset($this['parent_id']) && !empty($this['parent_id']), function ($query) {
                             return $query->where('parent_id', $this['parent_id']);
                         })
@@ -67,5 +76,24 @@ class SubCategoryAddRequest extends FormRequest
                 }
             }
         ];
+    }
+
+    private function getDefaultName(): string
+    {
+        $names = $this->input('name', []);
+        $languages = $this->input('lang', []);
+        $englishIndex = array_search('en', $languages);
+
+        if ($englishIndex !== false && !empty(trim($names[$englishIndex] ?? ''))) {
+            return trim($names[$englishIndex]);
+        }
+
+        foreach ($names as $name) {
+            if (!empty(trim($name ?? ''))) {
+                return trim($name);
+            }
+        }
+
+        return '';
     }
 }

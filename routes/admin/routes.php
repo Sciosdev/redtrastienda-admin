@@ -38,6 +38,8 @@ use App\Http\Controllers\Admin\Promotion\BannerController;
 use App\Http\Controllers\Admin\Promotion\CouponController;
 use App\Http\Controllers\Admin\Settings\SiteMapController;
 use App\Http\Controllers\Admin\Customer\CustomerController;
+use App\Http\Controllers\Admin\NumeroAnpController;
+use App\Http\Controllers\Admin\AffiliateProfileController;
 use App\Http\Controllers\Admin\Employee\EmployeeController;
 use App\Http\Controllers\Admin\Product\AttributeController;
 use App\Http\Controllers\Admin\Settings\CurrencyController;
@@ -386,6 +388,25 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                 Route::get('report', 'index')->name('report');
                 Route::get('export', 'exportList')->name('export');
             });
+        });
+    });
+
+    Route::group(['prefix' => 'numeros-anp', 'as' => 'numeros-anp.', 'middleware' => ['module:people']], function () {
+        Route::controller(NumeroAnpController::class)->group(function () {
+            Route::get('list', 'index')->name('list');
+            Route::post('generate', 'generateBatch')->name('generate');
+            Route::post('import', 'import')->name('import');
+            Route::get('export', 'export')->name('export');
+            Route::post('status-update', 'updateStatus')->name('status-update');
+        });
+    });
+
+    Route::group(['prefix' => 'afiliados', 'as' => 'afiliados.', 'middleware' => ['module:people']], function () {
+        Route::controller(AffiliateProfileController::class)->group(function () {
+            Route::get('list', 'index')->name('list');
+            Route::get('view/{id}', 'getView')->name('view');
+            Route::post('status-update', 'updateStatus')->name('status-update');
+            Route::post('settings', 'updateSettings')->name('settings');
         });
     });
 

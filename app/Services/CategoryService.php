@@ -13,7 +13,7 @@ class CategoryService
     public function getAddData(object $request): array
     {
         $storage = config('filesystems.disks.default') ?? 'public';
-        $name = $request['name'][array_search('en', $request['lang'])];
+        $name = $this->getDefaultName($request);
 
         return [
             'name' => $name,
@@ -31,7 +31,7 @@ class CategoryService
     {
         $storage = config('filesystems.disks.default') ?? 'public';
         $image = $request->file('image') ? $this->update('category/', $data['image'], 'webp', $request->file('image')) : $data['icon'];
-        $name = $request['name'][array_search('en', $request['lang'])];
+        $name = $this->getDefaultName($request);
 
         $result = [
             'name' => $name,
@@ -48,6 +48,25 @@ class CategoryService
             $result['home_status'] = $request['home_status'] ?? 0;
         }
         return $result;
+    }
+
+    private function getDefaultName(object $request): string
+    {
+        $names = $request['name'] ?? [];
+        $languages = $request['lang'] ?? [];
+        $englishIndex = array_search('en', $languages);
+
+        if ($englishIndex !== false && !empty(trim($names[$englishIndex] ?? ''))) {
+            return trim($names[$englishIndex]);
+        }
+
+        foreach ($names as $name) {
+            if (!empty(trim($name ?? ''))) {
+                return trim($name);
+            }
+        }
+
+        return '';
     }
 
     public function getSelectOptionHtml(object $data): string

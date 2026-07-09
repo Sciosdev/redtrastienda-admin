@@ -32,9 +32,7 @@ class SubCategoryUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => [
-                'required',
-            ],
+            'name' => 'required|array',
             'image' => 'mimes:jpg,jpeg,png|max:'. getFileUploadMaxSize(unit: 'kb'),
             'priority' => 'required'
         ];
@@ -44,6 +42,7 @@ class SubCategoryUpdateRequest extends FormRequest
     {
         return [
             'name.required' => translate('category_name_is_required'),
+            'name.array' => translate('category_name_is_required'),
             'image.mimes' => translate('category_image_must_be_jpg_jpeg_png'),
             'image.max' => translate('category_image_must_not_exceed_2mb'),
             'priority.required' => translate('category_priority_is_required'),
@@ -54,7 +53,15 @@ class SubCategoryUpdateRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                if (isset($this['name'][0]) && Category::where(['name' => $this['name'][0], 'position' => $this['position']])->where('id', '!=', $this['id'])->first()) {
+                $name = $this->getDefaultName();
+
+                if (empty($name)) {
+                    $validator->errors()->add(
+                        'name', translate('category_name_is_required')
+                    );
+                }
+
+                if (!empty($name) && Category::where(['name' => $name, 'position' => $this['position']])->where('id', '!=', $this['id'])->first()) {
                     $validator->errors()->add(
                         'name.unique', translate('The_category_has_already_been_taken') . '!'
                     );
@@ -70,6 +77,25 @@ class SubCategoryUpdateRequest extends FormRequest
                 }
             }
         ];
+    }
+
+    private function getDefaultName(): string
+    {
+        $names = $this->input('name', []);
+        $languages = $this->input('lang', []);
+        $englishIndex = array_search('en', $languages);
+
+        if ($englishIndex !== false && !empty(trim($names[$englishIndex] ?? ''))) {
+            return trim($names[$englishIndex]);
+        }
+
+        foreach ($names as $name) {
+            if (!empty(trim($name ?? ''))) {
+                return trim($name);
+            }
+        }
+
+        return '';
     }
 
 }

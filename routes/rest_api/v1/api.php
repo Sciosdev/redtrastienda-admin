@@ -60,6 +60,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
 
         Route::controller(CustomerAPIAuthController::class)->group(function () {
             Route::post('register', 'register');
+            Route::post('check-numero-anp', 'checkNumeroAnp');
             Route::post('login', 'login');
             Route::post('check-email', 'checkEmail');
             Route::post('check-phone', 'checkPhone');
@@ -269,6 +270,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
             Route::get('info', 'info');
             Route::put('update-profile', 'update_profile');
             Route::get('account-delete/{id}', 'account_delete');
+            Route::get('affiliate-profile', 'affiliateProfile');
         });
 
         Route::group(['prefix' => 'address'], function () {
