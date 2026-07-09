@@ -208,7 +208,7 @@ class ProductController extends Controller
         }
 
         $product->category_ids          = json_encode($category);
-        $product->brand_id              = isset($request->brand_id) ? $request->brand_id : null;
+        $product->brand_id              = $request->brand_id ?: null;
         $product->unit                  = $request->product_type == 'physical' ? $request->unit : null;
         $product->product_type          = $request->product_type;
         $product->digital_product_type  = $request->product_type == 'digital' ? $request->digital_product_type : null;
@@ -446,7 +446,7 @@ class ProductController extends Controller
         }
 
         $product->category_ids          = json_encode($category);
-        $product->brand_id              = isset($request->brand_id) ? $request->brand_id : null;
+        $product->brand_id              = $request->brand_id ?: null;
         $product->unit                  = $request->product_type == 'physical' ? $request->unit : null;
         $product->product_type          = $request->product_type;
         $product->digital_product_type  = $request->product_type == 'digital' ? $request->digital_product_type : null;
