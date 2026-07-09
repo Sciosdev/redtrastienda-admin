@@ -764,6 +764,12 @@
                         <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('Gallery') }}</span></span>
                         <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="file-gallery" aria-label="Pin"></button></div>
                     </a>
+                    @if ((int)auth('admin')->id() === 1 && filter_var(env('DEPLOY_PANEL_ENABLED'), FILTER_VALIDATE_BOOLEAN))
+                        <a class="v2-nav-item {{ Request::is('admin/system-setup/deploy') ? 'v2-is-active' : '' }}" data-item="deploy" href="{{ route('admin.system-setup.deploy') }}">
+                            <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('Deploy_desde_GitHub') }}</span></span>
+                            <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="deploy" aria-label="Pin"></button></div>
+                        </a>
+                    @endif
                 </div>
             @endif
 

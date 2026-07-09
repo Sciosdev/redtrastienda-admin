@@ -69,6 +69,7 @@ use App\Http\Controllers\Admin\Settings\PrioritySetupController;
 use App\Http\Controllers\Admin\Customer\CustomerWalletController;
 use App\Http\Controllers\Admin\Deliveryman\DeliveryManController;
 use App\Http\Controllers\Admin\Settings\SoftwareUpdateController;
+use App\Http\Controllers\Admin\Settings\DeployController;
 use App\Http\Controllers\Admin\Settings\VendorSettingsController;
 use App\Http\Controllers\Admin\Shipping\ShippingMethodController;
 use App\Http\Controllers\Admin\ThirdParty\GoogleMapAPIController;
@@ -742,6 +743,13 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
     });
 
     Route::group(['prefix' => 'system-setup', 'as' => 'system-setup.'], function () {
+
+        // Self-deploy panel. Access is hard-gated in DeployController::authorizeDeployAccess()
+        // (env flag DEPLOY_PANEL_ENABLED + master admin only), not by a module permission.
+        Route::controller(DeployController::class)->group(function () {
+            Route::get('deploy', 'index')->name('deploy');
+            Route::post('deploy', 'deploy')->name('deploy.run');
+        });
 
         Route::group(['middleware' => ['module:themes_and_addons']], function () {
             Route::group(['prefix' => 'theme', 'as' => 'theme.'], function () {
