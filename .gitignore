@@ -8,6 +8,8 @@
 # vendor/ is committed on purpose: cPanel deploys via git pull with no composer available
 /storage/logs/*.log
 /bootstrap/cache/*.php
+# system-addons.php = estado de activación de licencia por-dominio (runtime-mutable). No versionar: el repo trae datos dummy que revierten la activación en cada deploy.
+/config/system-addons.php
 *.zip
 .rnd
 .vscode
