@@ -397,6 +397,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('list', 'index')->name('list');
             Route::post('generate', 'generateBatch')->name('generate');
             Route::post('import', 'import')->name('import');
+            Route::post('import-afiliados', 'importAfiliados')->name('import-afiliados');
+            Route::post('alta-manual', 'storeAfiliadoManual')->name('alta-manual');
             Route::get('export', 'export')->name('export');
             Route::post('status-update', 'updateStatus')->name('status-update');
         });
@@ -408,6 +410,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('view/{id}', 'getView')->name('view');
             Route::post('status-update', 'updateStatus')->name('status-update');
             Route::post('settings', 'updateSettings')->name('settings');
+            Route::post('asignar-numero', 'assignNumero')->name('asignar-numero');
         });
     });
 

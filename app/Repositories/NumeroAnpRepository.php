@@ -82,4 +82,9 @@ class NumeroAnpRepository implements NumeroAnpRepositoryInterface
     {
         return $this->numeroAnp->insert($rows);
     }
+
+    public function getListWhereNumeroIn(array $numeros): Collection
+    {
+        return $this->numeroAnp->whereIn('numero_anp', $numeros)->get();
+    }
 }

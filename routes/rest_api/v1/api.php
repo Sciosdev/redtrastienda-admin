@@ -61,6 +61,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
         Route::controller(CustomerAPIAuthController::class)->group(function () {
             Route::post('register', 'register');
             Route::post('check-numero-anp', 'checkNumeroAnp');
+            Route::post('anp/verificar-identidad', 'verificarIdentidadAnp')->middleware('throttle:10,1');
+            Route::post('anp/activar-cuenta', 'activarCuentaAnp')->middleware('throttle:10,1');
             Route::post('login', 'login');
             Route::post('check-email', 'checkEmail');
             Route::post('check-phone', 'checkPhone');

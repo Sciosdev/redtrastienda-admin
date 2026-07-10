@@ -78,7 +78,16 @@ class CustomerController extends Controller
             return response()->json(['message' => translate('affiliate_profile_not_found')], 404);
         }
 
-        return response()->json($profile, 200);
+        // R-Afiliación (aditivo): la app invita a completar los campos vacíos
+        // tras activar la cuenta. datos_importacion no viaja (payload/privacidad).
+        $profile->makeHidden(['datos_importacion']);
+        $data = $profile->toArray();
+        $data['campos_faltantes'] = collect(['nombre_negocio', 'whatsapp', 'direccion', 'estado', 'municipio', 'colonia', 'foto_negocio'])
+            ->filter(fn($campo) => blank($profile->{$campo}))
+            ->values()
+            ->all();
+
+        return response()->json($data, 200);
     }
 
     public function create_support_ticket(SupportTicketRequest $request)

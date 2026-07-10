@@ -55,6 +55,14 @@
                                 <button type="submit" class="btn btn-primary btn-block">{{ translate('Filter') }}</button>
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <label class="d-md-block">&nbsp;</label>
+                            <a href="{{ route('admin.afiliados.list', ['sin_numero' => 1]) }}"
+                               class="btn {{ request('sin_numero') ? 'btn-warning' : 'btn-outline-warning' }}">
+                                {{ translate('leads_sin_numero') }}
+                                <span class="badge badge-soft-dark">{{ $totalLeadsSinNumero }}</span>
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -71,6 +79,7 @@
                         <form action="{{ url()->current() }}" method="GET">
                             <div class="input-group">
                                 <input type="hidden" name="estatus" value="{{ request('estatus') }}">
+                                <input type="hidden" name="sin_numero" value="{{ request('sin_numero') }}">
                                 <input type="search" name="searchValue" class="form-control" placeholder="{{ translate('buscar_por_nombre_negocio_o_numero_ANP') }}" value="{{ request('searchValue') }}">
                                 <div class="input-group-append search-submit">
                                     <button type="submit"><i class="fi fi-rr-search"></i></button>
@@ -102,7 +111,13 @@
                                     <a class="text-dark text-hover-primary" href="tel:{{ $affiliate->customer?->phone }}">{{ $affiliate->customer?->phone }}</a>
                                 </td>
                                 <td>{{ $affiliate->nombre_negocio ?: '-' }}</td>
-                                <td><strong>{{ $affiliate->numero_anp }}</strong></td>
+                                <td>
+                                    @if($affiliate->numero_anp)
+                                        <strong>{{ $affiliate->numero_anp }}</strong>
+                                    @else
+                                        <span class="badge badge-soft-warning">{{ translate('lead_sin_numero') }}</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @php
                                         $badge = ['pendiente' => 'warning', 'activo' => 'success', 'rechazado' => 'secondary', 'bloqueado' => 'danger'][$affiliate->estatus] ?? 'secondary';

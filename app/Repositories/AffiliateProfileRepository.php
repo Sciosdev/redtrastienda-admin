@@ -43,6 +43,9 @@ class AffiliateProfileRepository implements AffiliateProfileRepositoryInterface
             ->when(isset($filters['estatus']) && $filters['estatus'] != '', function ($query) use ($filters) {
                 return $query->where('estatus', $filters['estatus']);
             })
+            ->when(!empty($filters['sin_numero']), function ($query) {
+                return $query->whereNull('numero_anp');
+            })
             ->when(!empty($searchValue), function ($query) use ($searchValue) {
                 return $query->where(function ($query) use ($searchValue) {
                     $query->where('numero_anp', 'like', "%{$searchValue}%")
@@ -71,5 +74,15 @@ class AffiliateProfileRepository implements AffiliateProfileRepositoryInterface
     public function delete(array $params): bool
     {
         return $this->affiliateProfile->where($params)->delete();
+    }
+
+    public function getListWhereNumeroIn(array $numeros, array $relations = []): Collection
+    {
+        return $this->affiliateProfile->with($relations)->whereIn('numero_anp', $numeros)->get();
+    }
+
+    public function insertMany(array $rows): bool
+    {
+        return $this->affiliateProfile->insert($rows);
     }
 }

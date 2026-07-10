@@ -57,6 +57,70 @@
             </div>
         </div>
 
+        <div class="row g-3 mb-4">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">{{ translate('importar_afiliados_excel_completo') }}</h5>
+                        <small class="text-muted d-block mb-3">{{ translate('archivo_de_usuarios_de_ANPEC_crea_la_cuenta_completa_de_cada_afiliado_las_cuentas_ya_activadas_jamas_se_modifican') }}</small>
+                        <form action="{{ route('admin.numeros-anp.import-afiliados') }}" method="post" enctype="multipart/form-data" onsubmit="return confirm('{{ translate('confirmar_importar_afiliados_del_archivo') }}')">
+                            @csrf
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-8">
+                                    <label class="form-label">{{ translate('archivo') }} <span class="text-danger">*</span></label>
+                                    <input type="file" name="afiliados_file" class="form-control" accept=".csv,.xlsx,.xls,.txt" required>
+                                    <small class="text-muted">{{ translate('formato_export_de_usuarios_con_columnas_username_firstname_etc') }}</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-primary btn-block">{{ translate('importar_afiliados') }}</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">{{ translate('alta_manual_de_afiliado') }}</h5>
+                        <small class="text-muted d-block mb-3">{{ translate('captura_un_afiliado_individual_con_su_numero_ANP_ya_asignado_por_ANPEC') }}</small>
+                        <form action="{{ route('admin.numeros-anp.alta-manual') }}" method="post">
+                            @csrf
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('numero_ANP') }} <span class="text-danger">*</span></label>
+                                    <input type="text" name="numero_anp" class="form-control" maxlength="50" required placeholder="{{ translate('Ex') }}: ANP12345">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('nombre_afiliado') }} <span class="text-danger">*</span></label>
+                                    <input type="text" name="nombre" class="form-control" maxlength="150" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('phone') }}</label>
+                                    <input type="text" name="telefono" class="form-control" maxlength="30" placeholder="{{ translate('Ex') }}: 5512345678">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('nombre_negocio') }}</label>
+                                    <input type="text" name="nombre_negocio" class="form-control" maxlength="191">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('estado') }}</label>
+                                    <input type="text" name="estado" class="form-control" maxlength="100">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ translate('email') }} ({{ translate('optional') }})</label>
+                                    <input type="email" name="email" class="form-control" maxlength="150">
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">{{ translate('crear_afiliado') }}</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card mb-4">
             <div class="card-body">
                 <form action="{{ url()->current() }}" method="GET">

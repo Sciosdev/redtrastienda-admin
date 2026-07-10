@@ -70,7 +70,30 @@
                                 <tbody>
                                     <tr>
                                         <th class="w-40">{{ translate('numero_ANP') }}</th>
-                                        <td>{{ $affiliate->numero_anp }}</td>
+                                        <td>
+                                            @if($affiliate->numero_anp)
+                                                {{ $affiliate->numero_anp }}
+                                            @else
+                                                <span class="badge badge-soft-warning">{{ translate('lead_sin_numero') }}</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>{{ translate('cuenta_activada') }}</th>
+                                        <td>
+                                            @if($affiliate->reclamada)
+                                                <span class="badge badge-soft-success">{{ translate('si') }}</span>
+                                                @if($affiliate->fecha_reclamo)
+                                                    <small class="text-muted">{{ $affiliate->fecha_reclamo }}</small>
+                                                @endif
+                                            @else
+                                                <span class="badge badge-soft-secondary">{{ translate('sin_activar') }}</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>{{ translate('telefono_de_contacto_importado') }}</th>
+                                        <td>{{ $affiliate->telefono_contacto ?: '-' }}</td>
                                     </tr>
                                     <tr>
                                         <th>{{ translate('nombre_afiliado') }}</th>
@@ -117,6 +140,29 @@
                         </div>
                     </div>
                 </div>
+
+                @if(is_null($affiliate->numero_anp))
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h5 class="mb-1">{{ translate('asignar_numero_ANP') }}</h5>
+                            <small class="text-muted d-block mb-3">{{ translate('este_interesado_aun_no_tiene_numero_al_asignarle_uno_podra_iniciar_sesion_con_sus_credenciales') }}</small>
+                            <form action="{{ route('admin.afiliados.asignar-numero') }}" method="post" onsubmit="return confirm('{{ translate('confirmar_asignar_numero_ANP_a_este_afiliado') }}')">
+                                @csrf
+                                <input type="hidden" name="id" value="{{ $affiliate->id }}">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ translate('numero_ANP') }} <span class="text-danger">*</span></label>
+                                        <input type="text" name="numero_anp" class="form-control" maxlength="50" required placeholder="{{ translate('Ex') }}: ANP12345">
+                                        <small class="text-muted">{{ translate('puede_ser_un_numero_disponible_existente_o_uno_nuevo_del_sistema_de_ANPEC') }}</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-primary btn-block">{{ translate('asignar') }}</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

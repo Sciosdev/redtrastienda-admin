@@ -12,17 +12,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $customer_id
- * @property string $numero_anp
+ * @property string|null $numero_anp
  * @property string|null $nombre_negocio
  * @property string|null $whatsapp
+ * @property string|null $telefono_contacto
  * @property string|null $direccion
  * @property string|null $estado
  * @property string|null $municipio
  * @property string|null $colonia
  * @property string|null $foto_negocio
  * @property string $estatus
+ * @property bool $reclamada
+ * @property Carbon|null $fecha_reclamo
  * @property Carbon|null $approved_at
  * @property string|null $approved_by
+ * @property array|null $datos_importacion
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -37,20 +41,27 @@ class AffiliateProfile extends Model
         'numero_anp',
         'nombre_negocio',
         'whatsapp',
+        'telefono_contacto',
         'direccion',
         'estado',
         'municipio',
         'colonia',
         'foto_negocio',
         'estatus',
+        'reclamada',
+        'fecha_reclamo',
         'approved_at',
         'approved_by',
+        'datos_importacion',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'customer_id' => 'integer',
+        'reclamada' => 'boolean',
+        'fecha_reclamo' => 'datetime',
         'approved_at' => 'datetime',
+        'datos_importacion' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

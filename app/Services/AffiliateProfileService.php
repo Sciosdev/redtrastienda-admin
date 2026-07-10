@@ -49,6 +49,24 @@ class AffiliateProfileService
     }
 
     /**
+     * R-Lead: perfil de un interesado SIN número ANP. Nace pendiente y con
+     * reclamada=1 (él creó sus credenciales); no puede iniciar sesión hasta que
+     * el admin le asigne número. Must be called inside the user's transaction.
+     */
+    public function createLeadProfile(Request $request, object $user): void
+    {
+        $this->affiliateProfileRepo->add([
+            'customer_id' => $user->id,
+            'numero_anp' => null,
+            'nombre_negocio' => $request['nombre_negocio'] ?? null,
+            'whatsapp' => $request['whatsapp'] ?? null,
+            'estatus' => 'pendiente',
+            'reclamada' => 1,
+            'fecha_reclamo' => now(),
+        ]);
+    }
+
+    /**
      * Change an affiliate profile status. When approving, stamps approved_at/by.
      */
     public function changeStatus(string $id, string $estatus, ?string $adminName = null): bool

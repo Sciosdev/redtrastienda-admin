@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\RestAPI\v1\auth;
 
+use App\Contracts\Repositories\AffiliateProfileRepositoryInterface;
 use App\Contracts\Repositories\BusinessSettingRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\LoginSetupRepositoryInterface;
 use App\Contracts\Repositories\NumeroAnpRepositoryInterface;
 use App\Contracts\Repositories\PhoneOrEmailVerificationRepositoryInterface;
+use App\Services\ActivacionCuentaService;
 use App\Services\AffiliateProfileService;
 use App\Events\CustomerRegisteredViaReferralEvent;
 use App\Events\EmailVerificationEvent;
@@ -22,6 +24,7 @@ use Firebase\JWT\JWT;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +35,9 @@ class CustomerAPIAuthController extends Controller
 {
     use CustomerTrait;
 
+    /** Patrón del número ANP como identidad de login (ANP + dígitos + letra final opcional). */
+    private const PATRON_NUMERO_ANP = '/^anp\d+a?$/i';
+
     public function __construct(
         private readonly CustomerRepositoryInterface                 $customerRepo,
         private readonly BusinessSettingRepositoryInterface          $businessSettingRepo,
@@ -41,6 +47,8 @@ class CustomerAPIAuthController extends Controller
         private readonly ReferByEarnCustomerService                  $referByEarnCustomerService,
         private readonly NumeroAnpRepositoryInterface                $numeroAnpRepo,
         private readonly AffiliateProfileService                     $affiliateProfileService,
+        private readonly AffiliateProfileRepositoryInterface         $affiliateProfileRepo,
+        private readonly ActivacionCuentaService                     $activacionCuentaService,
     )
     {
     }
@@ -62,17 +70,24 @@ class CustomerAPIAuthController extends Controller
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
-        $anpResolution = $this->resolveNumeroAnpForRegistration($request);
-        if ($anpResolution['error']) {
-            return $anpResolution['error'];
+        // R-Lead: interesado SIN número ANP. Crea cuenta pendiente que no puede
+        // iniciar sesión; el registro con ANP y el legacy siguen intactos.
+        $esLead = filter_var($request['es_lead'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $numeroAnp = null;
+        if (!$esLead) {
+            $anpResolution = $this->resolveNumeroAnpForRegistration($request);
+            if ($anpResolution['error']) {
+                return $anpResolution['error'];
+            }
+            $numeroAnp = $anpResolution['numero'];
         }
-        $numeroAnp = $anpResolution['numero'];
 
         $referUser = $request['referral_code'] ? $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]) : null;
 
         $temporaryToken = Str::random(40);
 
-        $user = DB::transaction(function () use ($request, $referUser, $temporaryToken, $numeroAnp) {
+        $user = DB::transaction(function () use ($request, $referUser, $temporaryToken, $numeroAnp, $esLead) {
             $user = $this->customerRepo->add([
                 'name' => $request['f_name'] . ' ' . $request['l_name'],
                 'f_name' => $request['f_name'],
@@ -87,10 +102,20 @@ class CustomerAPIAuthController extends Controller
 
             if ($numeroAnp) {
                 $this->affiliateProfileService->createProfileAndConsumeAnp(request: $request, user: $user, numeroAnp: $numeroAnp);
+            } elseif ($esLead) {
+                $this->affiliateProfileService->createLeadProfile(request: $request, user: $user);
             }
 
             return $user;
         });
+
+        if ($esLead) {
+            $this->notificarNuevoLead(user: $user, nombreNegocio: $request['nombre_negocio'] ?? null);
+            return response()->json([
+                'lead' => true,
+                'message' => translate('tu_solicitud_quedo_registrada_ANPEC_te_contactara'),
+            ], 200);
+        }
 
         $referralData = getWebConfig(name: 'ref_earning_customer');
         $referralEarningRate = $this->businessSettingRepo->getFirstWhere(params: ['type' => 'ref_earning_exchange_rate']);
@@ -128,6 +153,21 @@ class CustomerAPIAuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        // R-Afiliación: el número ANP también es identidad de login. Se resuelve
+        // al email interno del afiliado y el flujo sigue idéntico.
+        $identidad = trim((string)$request['email_or_phone']);
+        if (preg_match(self::PATRON_NUMERO_ANP, $identidad)) {
+            $perfilAnp = $this->affiliateProfileRepo->getFirstWhere(params: ['numero_anp' => $identidad], relations: ['customer']);
+            if ($perfilAnp && !$perfilAnp->reclamada) {
+                return response()->json(['errors' => [
+                    ['code' => 'cuenta_sin_activar', 'message' => translate('tu_cuenta_aun_no_esta_activada_es_tu_primera_vez_activala')]
+                ]], 403);
+            }
+            if ($perfilAnp?->customer) {
+                $request->merge(['email_or_phone' => $perfilAnp->customer->email]);
+            }
         }
 
         $type = $request['type'];
@@ -175,6 +215,10 @@ class CustomerAPIAuthController extends Controller
                     return response()->json(['errors' => [
                         ['code' => 'active', 'message' => translate('This_user_is_not_active!')]
                     ]], 403);
+                }
+
+                if ($leadError = $this->getLeadPendienteError(user: $user)) {
+                    return $leadError;
                 }
 
                 $token = auth()->user()->createToken('LaravelAuthApp')->accessToken;
@@ -390,6 +434,10 @@ class CustomerAPIAuthController extends Controller
                 ]], 403);
             }
 
+            if ($leadError = $this->getLeadPendienteError(user: $user)) {
+                return $leadError;
+            }
+
             $token = $user->createToken('LaravelAuthApp')->accessToken;
             return response()->json(['message' => translate('OTP verified!'), 'token' => $token, 'status' => true], 200);
         }
@@ -439,6 +487,10 @@ class CustomerAPIAuthController extends Controller
                 return response()->json(['errors' => [
                     ['code' => 'active', 'message' => translate('This_user_is_not_active!')]
                 ]], 403);
+            }
+
+            if ($leadError = $this->getLeadPendienteError(user: $user)) {
+                return $leadError;
             }
 
             $token = $user->createToken('LaravelAuthApp')->accessToken;
@@ -575,6 +627,10 @@ class CustomerAPIAuthController extends Controller
                         'created_at' => now(),
                     ]);
             } else {
+                if ($leadError = $this->getLeadPendienteError(user: $user)) {
+                    return $leadError;
+                }
+
                 $token = $user->createToken('LaravelAuthApp')->accessToken;
                 $user['is_phone_verified'] = 1;
                 $user->save();
@@ -626,6 +682,10 @@ class CustomerAPIAuthController extends Controller
                 return response()->json(['errors' => [
                     ['code' => 'active', 'message' => translate('This_user_is_not_active!')]
                 ]], 403);
+            }
+
+            if ($leadError = $this->getLeadPendienteError(user: $isUserExist)) {
+                return $leadError;
             }
 
             $token = $isUserExist->createToken('LaravelAuthApp')->accessToken;
@@ -775,6 +835,10 @@ class CustomerAPIAuthController extends Controller
         }
 
         if ($existingUser->email_verified_at != null) {
+            if ($leadError = $this->getLeadPendienteError(user: $existingUser)) {
+                return $leadError;
+            }
+
             $token = $existingUser->createToken('LaravelAuthApp')->accessToken;
             return response()->json(['token' => $token, 'status' => true], 200);
         } else {
@@ -808,6 +872,10 @@ class CustomerAPIAuthController extends Controller
         }
 
         if ($request['user_response'] == 1) {
+            if ($leadError = $this->getLeadPendienteError(user: $user)) {
+                return $leadError;
+            }
+
             $user->email_verified_at = now();
             $user->login_medium = $request['medium'];
             $user->save();
@@ -1037,13 +1105,140 @@ class CustomerAPIAuthController extends Controller
         $existe = (bool)$numero;
         $disponible = $existe && $numero->estatus === 'disponible';
 
+        // R-Acceso (aditivo): la app decide con esto qué pedir en la activación.
+        // Solo el TIPO de factor; nunca datos personales.
+        $perfil = $this->affiliateProfileRepo->getFirstWhere(params: ['numero_anp' => trim($request['numero_anp'])], relations: ['customer']);
+
         return response()->json([
             'existe' => $existe,
             'disponible' => $disponible,
+            'precargado' => (bool)$perfil,
+            'reclamada' => (bool)($perfil->reclamada ?? false),
+            'factor' => $this->activacionCuentaService->determinarFactor(perfil: $perfil),
             'message' => !$existe
                 ? translate('numero_anp_invalido')
                 : ($disponible ? translate('numero_anp_disponible') : translate('numero_anp_no_disponible')),
         ], 200);
+    }
+
+    /**
+     * R-Acceso paso 2: valida el segundo dato de identidad (teléfono o nombre)
+     * y entrega un claim_token temporal. Con factor 'ninguno' recibe el correo
+     * de contacto y deja la solicitud para verificación manual del admin.
+     */
+    public function verificarIdentidadAnp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'numero_anp' => 'required|string|max:50',
+            'telefono' => 'nullable|string|max:30',
+            'nombre' => 'nullable|string|max:150',
+            'correo_contacto' => 'nullable|email|max:150',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $resultado = $this->activacionCuentaService->verificarIdentidad(
+            numeroAnp: $request['numero_anp'],
+            telefono: $request['telefono'],
+            nombre: $request['nombre'],
+            correoContacto: $request['correo_contacto'],
+        );
+
+        if (!$resultado['ok']) {
+            return response()->json(['errors' => [
+                ['code' => $resultado['code'], 'message' => $resultado['message']]
+            ]], 403);
+        }
+
+        if (!empty($resultado['requiere_verificacion_manual'])) {
+            return response()->json([
+                'requiere_verificacion_manual' => true,
+                'message' => $resultado['message'],
+            ], 200);
+        }
+
+        return response()->json([
+            'claim_token' => $resultado['claim_token'],
+            'expira_en_minutos' => $resultado['expira_en_minutos'],
+            'message' => $resultado['message'],
+        ], 200);
+    }
+
+    /**
+     * R-Acceso paso 3: crea las credenciales reales (correo + contraseña) de la
+     * cuenta verificada y devuelve el token de sesión para entrar directo.
+     */
+    public function activarCuentaAnp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'claim_token' => 'required|string',
+            'correo_real' => 'required|email|max:150',
+            'password' => 'required|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        $resultado = $this->activacionCuentaService->activarCuenta(
+            claimToken: $request['claim_token'],
+            correoReal: $request['correo_real'],
+            password: $request['password'],
+        );
+
+        if (!$resultado['ok']) {
+            return response()->json(['errors' => [
+                ['code' => $resultado['code'], 'message' => $resultado['message']]
+            ]], 403);
+        }
+
+        $token = $resultado['user']->createToken('LaravelAuthApp')->accessToken;
+
+        return response()->json(['token' => $token, 'message' => $resultado['message']], 200);
+    }
+
+    /**
+     * R-Lead: un lead pendiente sin número ANP solo navega como invitado. Se
+     * evalúa DESPUÉS de validar credenciales para no regalar información.
+     */
+    private function getLeadPendienteError(object $user): ?JsonResponse
+    {
+        $perfil = $this->affiliateProfileRepo->getFirstWhere(params: ['customer_id' => $user->id]);
+        if ($perfil && $perfil->numero_anp === null && $perfil->estatus === 'pendiente') {
+            return response()->json(['errors' => [
+                ['code' => 'lead_pendiente', 'message' => translate('tu_afiliacion_esta_en_proceso_ANPEC_te_contactara')]
+            ]], 403);
+        }
+        return null;
+    }
+
+    /**
+     * Aviso best-effort al correo de la empresa cuando entra un lead: si el
+     * mail no está configurado, el registro no debe fallar.
+     */
+    private function notificarNuevoLead(object $user, ?string $nombreNegocio): void
+    {
+        try {
+            $companyEmail = getWebConfig(name: 'company_email');
+            if (empty($companyEmail)) {
+                return;
+            }
+
+            $mensaje = translate('nuevo_interesado_en_afiliarse_a_ANPEC') . "\n\n"
+                . translate('nombre') . ': ' . trim($user->f_name . ' ' . $user->l_name) . "\n"
+                . translate('email') . ': ' . $user->email . "\n"
+                . translate('phone') . ': ' . $user->phone . "\n"
+                . ($nombreNegocio ? translate('nombre_negocio') . ': ' . $nombreNegocio . "\n" : '')
+                . "\n" . translate('revisalo_en_el_panel_afiliados_filtro_leads_sin_numero');
+
+            Mail::raw($mensaje, function ($message) use ($companyEmail) {
+                $message->to($companyEmail)->subject(translate('nueva_solicitud_de_afiliacion_ANPEC'));
+            });
+        } catch (\Throwable $exception) {
+            // Notificación no crítica: nunca debe tumbar el registro del lead.
+        }
     }
 
     /**
