@@ -71,6 +71,7 @@ class AfiliadoPrecargaService
 
             $aCrear = [];
             $aAdoptar = [];
+            $emailsEnChunk = [];
             foreach ($filas as $numero => $fila) {
                 $perfil = $perfilesExistentes->get($numero);
                 if ($perfil) {
@@ -90,10 +91,13 @@ class AfiliadoPrecargaService
                     $resultado[in_array($numeroRow->estatus, ['bloqueado', 'cancelado']) ? 'saltados_bloqueado' : 'saltados_anomalia']++;
                     continue;
                 }
-                if (isset($emailsExistentes[$fila['email']])) {
+                // Correo ya en BD o repetido DENTRO del chunk: users.email es UNIQUE
+                // y un duplicado en el insert masivo abortaría el chunk completo.
+                if (isset($emailsExistentes[$fila['email']]) || isset($emailsEnChunk[$fila['email']])) {
                     $resultado['saltados_email_duplicado']++;
                     continue;
                 }
+                $emailsEnChunk[$fila['email']] = true;
 
                 if ($numeroRow) {
                     $aAdoptar[$numero] = $fila;

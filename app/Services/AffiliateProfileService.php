@@ -39,6 +39,10 @@ class AffiliateProfileService
             'colonia' => $request['colonia'] ?? null,
             'foto_negocio' => $fotoNegocio,
             'estatus' => 'pendiente',
+            // Quien se registra tecleando su ANP crea sus credenciales aquí
+            // mismo: no hay nada que activar después (login por ANP directo).
+            'reclamada' => 1,
+            'fecha_reclamo' => now(),
         ]);
 
         $this->numeroAnpRepo->update(id: $numeroAnp->id, data: [
