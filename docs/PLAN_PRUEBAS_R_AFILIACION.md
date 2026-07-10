@@ -22,14 +22,35 @@ El import es un POST del panel (CSRF + sesión): probarlo desde la UI en
 
 ## B. check-numero-anp extendido (compat + campos nuevos)
 
+Filas de referencia VERIFICADAS contra `Usuarios.csv` (2026-07-09):
+
+| username | nombre | profile_field_phone | factor esperado |
+|---|---|---|---|
+| `anp14873a` | ROSARIO AIDEE RAMIREZ ROBLES | 6442278760 | `telefono` |
+| `anp11647` | ABELINA CHONA MORALES | 7443578099/7441822823 | `telefono` (celda doble) |
+| `anp17408a` | ABIGAIL CINOBIO VICTORIA | 71230 (5 dígitos) | `nombre` |
+| `anp12268` | — | 0 | `ninguno` (1 de los 2 casos) |
+
+Distribución real: 18,116 teléfono / 414 nombre / 2 ninguno = 18,532 válidas.
+
 ```bash
-# Precargado sin activar (usar un username real del CSV, ej. anp12268):
+# Precargado sin activar, factor teléfono:
 curl -s -X POST $BASE/api/v1/auth/check-numero-anp \
   -H "Content-Type: application/json" \
-  -d '{"numero_anp":"ANP12268"}'
+  -d '{"numero_anp":"ANP14873A"}'
 # Esperado: {"existe":true,"disponible":false,"precargado":true,"reclamada":false,
-#            "factor":"telefono"|"nombre"|"ninguno","message":...}
+#            "factor":"telefono","message":...}
 # Los campos existe/disponible/message NO cambian (compat con app vieja).
+
+# Factor degradado: teléfono de 5 dígitos → nombre:
+curl -s -X POST $BASE/api/v1/auth/check-numero-anp -H "Content-Type: application/json" \
+  -d '{"numero_anp":"ANP17408A"}'
+# Esperado: factor:"nombre"
+
+# Sin teléfono NI nombre:
+curl -s -X POST $BASE/api/v1/auth/check-numero-anp -H "Content-Type: application/json" \
+  -d '{"numero_anp":"ANP12268"}'
+# Esperado: factor:"ninguno"
 
 # Número inexistente:
 curl -s -X POST $BASE/api/v1/auth/check-numero-anp -H "Content-Type: application/json" \
@@ -39,33 +60,51 @@ curl -s -X POST $BASE/api/v1/auth/check-numero-anp -H "Content-Type: application
 
 ## C. Activación (claim)
 
+OJO: los pasos 4 y 5 solo obtienen claim_token (NO activan): esos números quedan
+sin reclamar y se pueden re-probar. El único que se ACTIVA es ANP14873A (paso 6).
+
 ```bash
-# 1. Identidad con teléfono CORRECTO (el de profile_field_phone de esa fila):
+# 1. Identidad con teléfono CORRECTO (fila real anp14873a → 6442278760):
 curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
   -H "Content-Type: application/json" \
-  -d '{"numero_anp":"ANP12268","telefono":"6442278760"}'
+  -d '{"numero_anp":"ANP14873A","telefono":"6442278760"}'
 # Esperado 200: {"claim_token":"...","expira_en_minutos":15,...}
 
 # 2. Teléfono INCORRECTO:
 curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
   -H "Content-Type: application/json" \
-  -d '{"numero_anp":"ANP12268","telefono":"5500000000"}'
+  -d '{"numero_anp":"ANP14873A","telefono":"5500000000"}'
 # Esperado 403: errors[0].code = "identidad_no_coincide"
 
 # 3. Bloqueo por fallos: repetir el paso 2 diez veces → a partir del intento 11:
 # Esperado 403: code = "intentos_bloqueados" ("contacta a ANPEC").
 # NOTA: la ruta también lleva throttle:10,1 (10 req/min por IP) → 429 si se corre muy rápido; esperar 1 min entre tandas.
+# NOTA 2: hacer esta prueba con OTRO número (ej. ANP12614) para no bloquear ANP14873A antes del paso 6; el bloqueo dura 24h (cache).
 
-# 4. Celda con DOS teléfonos ("7443578099/7441822823"): probar AMBOS números
-# → los dos deben dar claim_token (matching por secuencia contenida).
-
-# 5. Fila sin teléfono (factor nombre): mandar el nombre con acentos/minúsculas
+# 4. Celda con DOS teléfonos (fila real anp11647 = "7443578099/7441822823"):
 curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
   -H "Content-Type: application/json" \
-  -d '{"numero_anp":"ANPXXXX","nombre":"rosario aidee ramirez"}'
-# Esperado 200 con claim_token (matching tolerante, tokens >= 2).
+  -d '{"numero_anp":"ANP11647","telefono":"7443578099"}'
+curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
+  -H "Content-Type: application/json" \
+  -d '{"numero_anp":"ANP11647","telefono":"7441822823"}'
+# Esperado: AMBOS dan 200 con claim_token (matching por secuencia contenida).
 
-# 6. Activar cuenta con correo NUEVO:
+# 5. Factor nombre (fila real anp17408a: teléfono de 5 dígitos → degrada a nombre):
+curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
+  -H "Content-Type: application/json" \
+  -d '{"numero_anp":"ANP17408A","nombre":"abigail cinobio"}'
+# Esperado 200 con claim_token (matching tolerante: minúsculas, tokens >= 2 contenidos).
+
+# 5b. Factor ninguno (fila real anp12268, sin teléfono ni nombre):
+curl -s -X POST $BASE/api/v1/auth/anp/verificar-identidad \
+  -H "Content-Type: application/json" \
+  -d '{"numero_anp":"ANP12268","correo_contacto":"contacto.manual@test.com"}'
+# Esperado 200: {"requiere_verificacion_manual":true,...}
+# Y en el panel Números ANP, ese número muestra en observaciones:
+# "[fecha] Verificación manual solicitada, correo: contacto.manual@test.com"
+
+# 6. Activar cuenta con correo NUEVO (claim_token del paso 1):
 curl -s -X POST $BASE/api/v1/auth/anp/activar-cuenta \
   -H "Content-Type: application/json" \
   -d '{"claim_token":"<token>","correo_real":"prueba.activacion@test.com","password":"secreto1","password_confirmation":"secreto1"}'
@@ -81,22 +120,24 @@ curl -s -X POST $BASE/api/v1/auth/anp/activar-cuenta \
 ## D. Login
 
 ```bash
-# Con número ANP (cuenta activada en C):
+# Con número ANP (la cuenta activada en C.6):
 curl -s -X POST $BASE/api/v1/auth/login -H "Content-Type: application/json" \
-  -d '{"email_or_phone":"ANP12268","password":"secreto1","type":"email"}'
-# Esperado 200: {"token":...} — también probar "anp12268" en minúsculas.
+  -d '{"email_or_phone":"ANP14873A","password":"secreto1","type":"email"}'
+# Esperado 200: {"token":...} — también probar "anp14873a" en minúsculas.
 
 # Con el correo real:
 curl -s -X POST $BASE/api/v1/auth/login -H "Content-Type: application/json" \
   -d '{"email_or_phone":"prueba.activacion@test.com","password":"secreto1","type":"email"}'
 # Esperado 200: token.
 
-# Con ANP de cuenta SIN activar:
+# Con ANP de cuenta SIN activar (ej. anp9993, no usada en C):
 curl -s -X POST $BASE/api/v1/auth/login -H "Content-Type: application/json" \
-  -d '{"email_or_phone":"ANP14873A","password":"loquesea","type":"email"}'
+  -d '{"email_or_phone":"ANP9993","password":"loquesea","type":"email"}'
 # Esperado 403: code = "cuenta_sin_activar".
 
 # Con el email sintético de una cuenta sin activar + cualquier contraseña:
+curl -s -X POST $BASE/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"email_or_phone":"anp9993@anpec.com.mx","password":"loquesea","type":"email"}'
 # Esperado: falla GENÉRICA (credentials_doesnt_match) — no revela nada.
 ```
 
