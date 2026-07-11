@@ -25,6 +25,7 @@ use App\Http\Controllers\Payment_Methods\SslCommerzPaymentController;
 use App\Http\Controllers\Payment_Methods\StripePaymentController;
 use App\Http\Controllers\Web\CartController;
 use App\Http\Controllers\Web\ChattingController;
+use App\Http\Controllers\Web\ConectateController;
 use App\Http\Controllers\Web\CouponController;
 use App\Http\Controllers\Web\CurrencyController;
 use App\Http\Controllers\Web\DigitalProductDownloadController;
@@ -491,3 +492,11 @@ if (!$isGatewayPublished) {
         });
     });
 }
+
+// R-Conéctate (D2 junta 2026-07-09): páginas públicas standalone. Top-level a propósito:
+// sin guestCheck (no crea guests en BD) y sin maintenance_mode (la política de privacidad
+// capturada en Play/App Store debe responder siempre).
+Route::controller(ConectateController::class)->group(function () {
+    Route::get('conectate', 'index')->name('conectate');
+    Route::get('politica-de-privacidad', 'getPrivacyPolicyView')->name('politica-de-privacidad');
+});
