@@ -9,6 +9,7 @@ class ConectateController extends Controller
 {
     public function index(): View
     {
+        $this->forceSpanishLocale();
         $companyPhone = (string)(getWebConfig(name: 'company_phone') ?? '');
         return view('anpec.conectate', [
             'companyName' => (string)(getWebConfig(name: 'company_name') ?? ''),
@@ -22,12 +23,24 @@ class ConectateController extends Controller
 
     public function getPrivacyPolicyView(): View
     {
+        $this->forceSpanishLocale();
         return view('anpec.politica-privacidad', [
             'companyName' => (string)(getWebConfig(name: 'company_name') ?? ''),
             'companyEmail' => (string)(getWebConfig(name: 'company_email') ?? ''),
             'companyLogoPath' => $this->getConfigImagePath(name: 'company_web_logo'),
             'companyFavIconPath' => $this->getConfigImagePath(name: 'company_fav_icon'),
         ]);
+    }
+
+    /**
+     * Estas páginas públicas son en español por diseño. translate() resuelve el
+     * idioma con getDefaultLanguage() (sesión 'local' → default del storefront,
+     * hoy 'en'): sin esto, un visitante sin sesión vería las claves humanizadas
+     * en lugar del contenido.
+     */
+    private function forceSpanishLocale(): void
+    {
+        session(['local' => 'es']);
     }
 
     private function getConfigImagePath(string $name): string
