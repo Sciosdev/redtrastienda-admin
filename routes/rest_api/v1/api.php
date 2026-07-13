@@ -452,7 +452,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
     // throttle nombradas: sin el 3er parámetro compartirían llave por usuario.
     Route::group(['prefix' => 'chat-tiendas', 'middleware' => 'auth:api'], function () {
         Route::controller(ChatTiendaController::class)->group(function () {
-            Route::get('', 'inbox');
+            Route::get('/', 'inbox');
             Route::get('directorio', 'directorio');
             Route::get('{chatId}/mensajes', 'mensajes');
             Route::post('enviar', 'enviar')->middleware('throttle:20,1,chat_enviar');
