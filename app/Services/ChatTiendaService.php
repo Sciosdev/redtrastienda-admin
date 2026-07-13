@@ -6,7 +6,6 @@ use App\Contracts\Repositories\AffiliateProfileRepositoryInterface;
 use App\Contracts\Repositories\ChatTiendaBloqueoRepositoryInterface;
 use App\Contracts\Repositories\ChatTiendaMensajeRepositoryInterface;
 use App\Contracts\Repositories\ChatTiendaRepositoryInterface;
-use App\Models\ChatTiendaMensaje;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -217,7 +216,7 @@ class ChatTiendaService
         return [];
     }
 
-    private function formatMensaje(ChatTiendaMensaje|object $mensaje, int $userId): array
+    private function formatMensaje(object $mensaje, int $userId): array
     {
         return [
             'id' => $mensaje->id,
