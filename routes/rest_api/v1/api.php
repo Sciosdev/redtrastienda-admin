@@ -12,6 +12,7 @@ use App\Http\Controllers\RestAPI\v1\BrandController;
 use App\Http\Controllers\RestAPI\v1\CartController;
 use App\Http\Controllers\RestAPI\v1\CategoryController;
 use App\Http\Controllers\RestAPI\v1\ChatController;
+use App\Http\Controllers\RestAPI\v1\ChatTiendaController;
 use App\Http\Controllers\RestAPI\v1\CompareController;
 use App\Http\Controllers\RestAPI\v1\ConfigController;
 use App\Http\Controllers\RestAPI\v1\CouponController;
@@ -445,5 +446,18 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
         Route::get('faq', 'faq');
         Route::get('get-guest-id', 'get_guest_id');
         Route::post('contact-us', 'contact_store');
+    });
+
+    // R-Chat-Tiendas (D5): mensajería interna afiliado↔afiliado. Cubetas de
+    // throttle nombradas: sin el 3er parámetro compartirían llave por usuario.
+    Route::group(['prefix' => 'chat-tiendas', 'middleware' => 'auth:api'], function () {
+        Route::controller(ChatTiendaController::class)->group(function () {
+            Route::get('', 'inbox');
+            Route::get('directorio', 'directorio');
+            Route::get('{chatId}/mensajes', 'mensajes');
+            Route::post('enviar', 'enviar')->middleware('throttle:20,1,chat_enviar');
+            Route::post('bloquear', 'bloquear')->middleware('throttle:10,1,chat_bloqueo');
+            Route::post('desbloquear', 'desbloquear')->middleware('throttle:10,1,chat_bloqueo');
+        });
     });
 });

@@ -85,4 +85,61 @@ class AffiliateProfileRepository implements AffiliateProfileRepositoryInterface
     {
         return $this->affiliateProfile->insert($rows);
     }
+
+    public function getDirectorioChat(int $solicitanteId, ?string $searchValue, int $limit, int $offset): LengthAwarePaginator
+    {
+        return $this->affiliateProfile
+            ->join('users', 'users.id', '=', 'affiliate_profiles.customer_id')
+            ->where('affiliate_profiles.estatus', 'activo')
+            ->where('affiliate_profiles.reclamada', 1)
+            ->whereNotNull('affiliate_profiles.numero_anp')
+            ->where('affiliate_profiles.customer_id', '!=', $solicitanteId)
+            ->whereNotExists(function ($query) use ($solicitanteId) {
+                $query->selectRaw('1')
+                    ->from('chat_tienda_bloqueos')
+                    ->where(function ($query) use ($solicitanteId) {
+                        $query->where('chat_tienda_bloqueos.bloqueador_id', $solicitanteId)
+                            ->whereColumn('chat_tienda_bloqueos.bloqueado_id', 'affiliate_profiles.customer_id');
+                    })
+                    ->orWhere(function ($query) use ($solicitanteId) {
+                        $query->whereColumn('chat_tienda_bloqueos.bloqueador_id', 'affiliate_profiles.customer_id')
+                            ->where('chat_tienda_bloqueos.bloqueado_id', $solicitanteId);
+                    });
+            })
+            ->when(!empty($searchValue), function ($query) use ($searchValue) {
+                return $query->where(function ($query) use ($searchValue) {
+                    $query->where('users.f_name', 'like', "%{$searchValue}%")
+                        ->orWhere('users.l_name', 'like', "%{$searchValue}%")
+                        ->orWhere('affiliate_profiles.nombre_negocio', 'like', "%{$searchValue}%")
+                        ->orWhere('affiliate_profiles.estado', 'like', "%{$searchValue}%");
+                });
+            })
+            ->orderBy('users.f_name')
+            ->orderBy('affiliate_profiles.customer_id')
+            // Select explícito: es imposible que viaje teléfono/correo/dirección/ANP.
+            ->select([
+                'affiliate_profiles.customer_id',
+                'users.f_name',
+                'users.l_name',
+                'affiliate_profiles.nombre_negocio',
+                'affiliate_profiles.estado',
+            ])
+            ->paginate($limit, ['*'], 'page', $offset);
+    }
+
+    public function getDatosChatWhereCustomerIn(array $customerIds): \Illuminate\Support\Collection
+    {
+        return $this->affiliateProfile
+            ->join('users', 'users.id', '=', 'affiliate_profiles.customer_id')
+            ->whereIn('affiliate_profiles.customer_id', $customerIds)
+            ->select([
+                'affiliate_profiles.customer_id',
+                'users.f_name',
+                'users.l_name',
+                'affiliate_profiles.nombre_negocio',
+                'affiliate_profiles.estado',
+            ])
+            ->get()
+            ->keyBy('customer_id');
+    }
 }
