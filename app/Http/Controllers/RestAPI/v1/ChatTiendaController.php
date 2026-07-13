@@ -74,7 +74,7 @@ class ChatTiendaController extends Controller
         );
 
         if (isset($resultado['error'])) {
-            return $this->errorResponse(error: $resultado['error']);
+            return $this->chatTiendaErrorResponse(error: $resultado['error']);
         }
 
         return response()->json($resultado + ['limit' => $request['limit'] ?? 30, 'offset' => $request['offset'] ?? 1], 200);
@@ -102,7 +102,7 @@ class ChatTiendaController extends Controller
         );
 
         if (isset($resultado['error'])) {
-            return $this->errorResponse(error: $resultado['error']);
+            return $this->chatTiendaErrorResponse(error: $resultado['error']);
         }
 
         return response()->json($resultado, 200);
@@ -130,7 +130,7 @@ class ChatTiendaController extends Controller
         );
 
         if (isset($resultado['error'])) {
-            return $this->errorResponse(error: $resultado['error']);
+            return $this->chatTiendaErrorResponse(error: $resultado['error']);
         }
 
         return response()->json(['message' => translate('usuario_bloqueado_chat_tiendas')], 200);
@@ -169,7 +169,11 @@ class ChatTiendaController extends Controller
         ]], 403);
     }
 
-    private function errorResponse(string $error): JsonResponse
+    /**
+     * No puede llamarse errorResponse: la clase base Controller ya define uno
+     * protected y PHP fatalea al reducir visibilidad/cambiar la firma.
+     */
+    private function chatTiendaErrorResponse(string $error): JsonResponse
     {
         return match ($error) {
             ChatTiendaService::ERROR_YO_MISMO => response()->json(['errors' => [
