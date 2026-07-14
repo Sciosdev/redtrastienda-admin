@@ -491,6 +491,10 @@
                         <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('afiliados_ANP') }}</span></span>
                         <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="afiliados-anp" aria-label="Pin"></button></div>
                     </a>
+                    <a class="v2-nav-item {{ Request::is('admin/mercado-publicaciones*') ? 'v2-is-active' : '' }}" data-item="mercado-publicaciones" href="{{ route('admin.mercado.list') }}">
+                        <span class="v2-nav-btn"><span class="v2-nav-label">{{ translate('mercado_entre_tiendas') }}</span></span>
+                        <div class="v2-nav-right"><button class="v2-pin-btn" type="button" data-pin="mercado-publicaciones" aria-label="Pin"></button></div>
+                    </a>
                 </div>
 
                 <div class="v2-ctx-group">

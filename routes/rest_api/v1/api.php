@@ -17,6 +17,7 @@ use App\Http\Controllers\RestAPI\v1\CompareController;
 use App\Http\Controllers\RestAPI\v1\ConfigController;
 use App\Http\Controllers\RestAPI\v1\CouponController;
 use App\Http\Controllers\RestAPI\v1\CustomerController;
+use App\Http\Controllers\RestAPI\v1\MercadoController;
 use App\Http\Controllers\RestAPI\v1\CustomerRestockRequestController;
 use App\Http\Controllers\RestAPI\v1\DealController;
 use App\Http\Controllers\RestAPI\v1\DealOfTheDayController;
@@ -458,6 +459,20 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
             Route::post('enviar', 'enviar')->middleware('throttle:20,1,chat_enviar');
             Route::post('bloquear', 'bloquear')->middleware('throttle:10,1,chat_bloqueo');
             Route::post('desbloquear', 'desbloquear')->middleware('throttle:10,1,chat_bloqueo');
+        });
+    });
+
+    // R-Mercado (Fase A): vitrina entre tenderos. Cubetas de throttle
+    // nombradas: sin el 3er parámetro compartirían llave por usuario.
+    Route::group(['prefix' => 'mercado', 'middleware' => 'auth:api'], function () {
+        Route::controller(MercadoController::class)->group(function () {
+            Route::get('publicaciones', 'publicaciones');
+            Route::get('tienda/{userId}', 'tienda');
+            Route::get('mis-publicaciones', 'misPublicaciones');
+            Route::post('publicaciones', 'crear')->middleware('throttle:10,1,mercado_publicar');
+            Route::post('publicaciones/{id}/actualizar', 'actualizar')->middleware('throttle:20,1,mercado_editar');
+            Route::post('publicaciones/{id}/toggle', 'toggle')->middleware('throttle:20,1,mercado_editar');
+            Route::post('publicaciones/{id}/reportar', 'reportar')->middleware('throttle:10,1,mercado_reporte');
         });
     });
 });

@@ -43,4 +43,14 @@ interface AffiliateProfileRepositoryInterface extends RepositoryInterface
      * @return \Illuminate\Support\Collection
      */
     public function getDatosChatWhereCustomerIn(array $customerIds): \Illuminate\Support\Collection;
+
+    /**
+     * R-Mercado: public shop header of one ELIGIBLE affiliate (estatus activo +
+     * reclamada + numero_anp). Exposes ONLY customer_id / f_name / l_name /
+     * nombre_negocio / estado / foto_negocio. Null when not eligible.
+     *
+     * @param int $customerId
+     * @return object|null
+     */
+    public function getPerfilPublicoMercado(int $customerId): ?object;
 }

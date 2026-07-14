@@ -142,4 +142,25 @@ class AffiliateProfileRepository implements AffiliateProfileRepositoryInterface
             ->get()
             ->keyBy('customer_id');
     }
+
+    public function getPerfilPublicoMercado(int $customerId): ?object
+    {
+        return $this->affiliateProfile
+            ->join('users', 'users.id', '=', 'affiliate_profiles.customer_id')
+            ->where('affiliate_profiles.customer_id', $customerId)
+            ->where('affiliate_profiles.estatus', 'activo')
+            ->where('affiliate_profiles.reclamada', 1)
+            ->whereNotNull('affiliate_profiles.numero_anp')
+            // Select explícito: foto_negocio es el ÚNICO dato extra que el
+            // Mercado expone sobre el directorio del chat.
+            ->select([
+                'affiliate_profiles.customer_id',
+                'users.f_name',
+                'users.l_name',
+                'affiliate_profiles.nombre_negocio',
+                'affiliate_profiles.estado',
+                'affiliate_profiles.foto_negocio',
+            ])
+            ->first();
+    }
 }
