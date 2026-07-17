@@ -28,3 +28,18 @@
     Order allow,deny
     Deny from all
 </Files>
+
+# ANPEC: cache de estáticos (imágenes de productos/tiendas tardaban ~1s de TTFB
+# por request sin ningún header de cache). Solo archivos estáticos — el API (JSON
+# vía index.php) no se ve afectado.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+</IfModule>
