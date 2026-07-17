@@ -3118,7 +3118,7 @@ return [
 	"created_files_and_data_will_store_to_3rd_party_storage" => "Los archivos y datos creados se almacenarán en un almacenamiento de terceros.",
 	"credentials_are_not_matched_or_your_account_is_not_active" => "Las credenciales no coinciden o su cuenta no está activa.",
 	"credentials_does_not_match_or_your_account_has_been_suspended" => "Las credenciales no coinciden o su cuenta ha sido suspendida.",
-	"credentials_doesnt_match" => "las credenciales no coinciden",
+	"credentials_doesnt_match" => "Las credenciales no coinciden",
 	"credit" => "credito",
 	"currency_changed_to" => "moneda cambiada a",
 	"currency_code" => "código de moneda",
