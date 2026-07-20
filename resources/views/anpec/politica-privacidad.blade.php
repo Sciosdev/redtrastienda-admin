@@ -79,4 +79,5 @@
 
 @section('footer_links')
     <p><a href="{{ route('conectate') }}">{{ translate('conectate_hero_titulo') }}</a></p>
+    <p><a href="{{ route('eliminar-cuenta') }}">{{ translate('eliminar_titulo') }}</a></p>
 @endsection

@@ -499,4 +499,5 @@ if (!$isGatewayPublished) {
 Route::controller(ConectateController::class)->group(function () {
     Route::get('conectate', 'index')->name('conectate');
     Route::get('politica-de-privacidad', 'getPrivacyPolicyView')->name('politica-de-privacidad');
+    Route::get('eliminar-cuenta', 'getAccountDeletionView')->name('eliminar-cuenta');
 });

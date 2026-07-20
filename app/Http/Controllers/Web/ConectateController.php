@@ -33,6 +33,21 @@ class ConectateController extends Controller
     }
 
     /**
+     * URL de eliminación de cuenta que exige Google Play (Data safety →
+     * account deletion). Misma familia de páginas públicas que la privacidad.
+     */
+    public function getAccountDeletionView(): View
+    {
+        $this->forceSpanishLocale();
+        return view('anpec.eliminar-cuenta', [
+            'companyName' => (string)(getWebConfig(name: 'company_name') ?? ''),
+            'companyEmail' => (string)(getWebConfig(name: 'company_email') ?? ''),
+            'companyLogoPath' => $this->getConfigImagePath(name: 'company_web_logo'),
+            'companyFavIconPath' => $this->getConfigImagePath(name: 'company_fav_icon'),
+        ]);
+    }
+
+    /**
      * Estas páginas públicas son en español por diseño. translate() resuelve el
      * idioma con getDefaultLanguage() (sesión 'local' → default del storefront,
      * hoy 'en'): sin esto, un visitante sin sesión vería las claves humanizadas
