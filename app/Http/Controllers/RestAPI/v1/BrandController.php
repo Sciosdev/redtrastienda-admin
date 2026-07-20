@@ -19,7 +19,10 @@ class BrandController extends Controller
 {
     public function get_brands(Request $request): array
     {
-        $shop = $request->has('shop_slug') && empty($request['shop_slug']) ? Shop::where('slug', $request['shop_slug'])->first() : null;
+        // Mismo bug de plantilla que en CategoryController::get_categories: empty()
+        // en vez de !empty() dejaba shop_slug sin efecto (marcas globales en el
+        // filtro ⚙ del proveedor).
+        $shop = $request->has('shop_slug') && !empty($request['shop_slug']) ? Shop::where('slug', $request['shop_slug'])->first() : null;
 
         if ($shop) {
             $brand_ids = Product::active()

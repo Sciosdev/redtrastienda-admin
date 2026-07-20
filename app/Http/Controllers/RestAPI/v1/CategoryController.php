@@ -16,7 +16,10 @@ class CategoryController extends Controller
     public function get_categories(Request $request): JsonResponse
     {
         $categoriesID = [];
-        $shop = $request->has('shop_slug') && empty($request['shop_slug']) ? Shop::where('slug', $request['shop_slug'])->first() : null;
+        // Bug de plantilla 6valley V16.3: la condición venía como empty() en vez de
+        // !empty(), así que shop_slug JAMÁS filtraba y el endpoint devolvía las
+        // categorías globales (los chips del proveedor pintaban "Panadería" en Coca).
+        $shop = $request->has('shop_slug') && !empty($request['shop_slug']) ? Shop::where('slug', $request['shop_slug'])->first() : null;
 
         if ($shop) {
             $categoriesID = Product::active()
