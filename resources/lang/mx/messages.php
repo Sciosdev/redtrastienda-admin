@@ -7554,4 +7554,5 @@ return [
 	"publicacion_restaurada_correctamente" => "Publicación restaurada al mercado",
 	"mercado_activo_en_la_app" => "Mercado activo en la app",
 	"los_afiliados_ven_la_pestana_Mercado_al_reabrir_la_app" => "Los afiliados ven la pestaña Mercado al reabrir la app",
+    "tu_codigo_para_la_app" => "Tu código para la app",
 ];

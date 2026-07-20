@@ -6675,4 +6675,5 @@ return [
     "category  is required!" => "Category is required!",
     "all_messages_are_in_translated" => "All messages are in translated",
     "All_Messages_are_translated" => "All Messages are translated",
+    "tu_codigo_para_la_app" => "Your code for the app",
 ];
