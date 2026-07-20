@@ -193,6 +193,7 @@ class ConfigController extends Controller
             'billing_input_by_customer' => (int)getWebConfig(name: 'billing_input_by_customer'),
             'minimum_order_limit' => (int)getWebConfig(name: 'minimum_order_limit'),
             'wallet_status' => (int)getWebConfig(name: 'wallet_status'),
+            'anpec_mercado_activo' => (int)(getWebConfig(name: 'anpec_mercado_activo') ?? 0),
             'loyalty_point_status' => (int)getWebConfig(name: 'loyalty_point_status'),
             'loyalty_point_exchange_rate' => (int)getWebConfig(name: 'loyalty_point_exchange_rate'),
             'loyalty_point_minimum_point' => (int)getWebConfig(name: 'loyalty_point_minimum_point'),
