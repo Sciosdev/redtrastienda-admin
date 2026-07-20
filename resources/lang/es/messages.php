@@ -7536,4 +7536,6 @@ return [
 	"confirmar_restaurar_publicacion" => "¿Restaurar esta publicación al mercado?",
 	"publicacion_oculta_correctamente" => "Publicación oculta del mercado",
 	"publicacion_restaurada_correctamente" => "Publicación restaurada al mercado",
+	"mercado_activo_en_la_app" => "Mercado activo en la app",
+	"los_afiliados_ven_la_pestana_Mercado_al_reabrir_la_app" => "Los afiliados ven la pestaña Mercado al reabrir la app",
 ];

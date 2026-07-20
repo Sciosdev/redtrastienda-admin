@@ -13,6 +13,27 @@
 
         <div class="card mb-4">
             <div class="card-body">
+                <form action="{{ route('admin.mercado.settings') }}" method="post">
+                    @csrf
+                    <div class="d-flex flex-wrap align-items-center gap-3 justify-content-between">
+                        <div>
+                            <h5 class="mb-1">{{ translate('mercado_activo_en_la_app') }}</h5>
+                            <small class="text-muted">{{ translate('los_afiliados_ven_la_pestana_Mercado_al_reabrir_la_app') }}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <label class="switcher">
+                                <input type="checkbox" class="switcher_input" name="anpec_mercado_activo" value="1" {{ $mercadoActivo == 1 ? 'checked' : '' }}>
+                                <span class="switcher_control"></span>
+                            </label>
+                            <button type="submit" class="btn btn-primary">{{ translate('guardar') }}</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
                 <form action="{{ url()->current() }}" method="GET">
                     <div class="row align-items-end g-4">
                         <div class="col-md-4">

@@ -419,6 +419,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
         Route::controller(MercadoPublicacionController::class)->group(function () {
             Route::get('list', 'index')->name('list');
             Route::post('visibilidad', 'updateVisibilidad')->name('visibilidad');
+            Route::post('settings', 'updateSettings')->name('settings');
         });
     });
 
