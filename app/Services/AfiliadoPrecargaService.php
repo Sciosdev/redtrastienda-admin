@@ -48,11 +48,12 @@ class AfiliadoPrecargaService
             'saltados_bloqueado' => 0,
             'saltados_anomalia' => 0,
             'saltados_email_duplicado' => 0,
+            'email_sintetico_por_duplicado' => 0,
         ];
 
         $filas = [];
         foreach ($rows as $row) {
-            $numero = strtoupper(trim((string)($row['username'] ?? '')));
+            $numero = strtoupper(trim((string)($row['folio_anpec'] ?? $row['username'] ?? '')));
             $filas[$numero] = $this->mapearFila(row: $row, numero: $numero);
         }
         if (empty($filas)) {
@@ -67,7 +68,13 @@ class AfiliadoPrecargaService
                 ->keyBy(fn($perfil) => strtoupper($perfil->numero_anp));
             // Bulk lookup directo al modelo: el repositorio de customers no expone
             // consultas por lote y 18.5k add() individuales harían inviable el import.
-            $emailsExistentes = User::whereIn('email', array_column($filas, 'email'))->pluck('id', 'email');
+            // Se consultan también los sintéticos: un correo repetido cae a
+            // <folio>@... y ese también compite por users.email, que es UNIQUE.
+            $emailsCandidatos = array_column($filas, 'email');
+            foreach (array_keys($filas) as $numeroFila) {
+                $emailsCandidatos[] = $this->emailSintetico(numero: (string)$numeroFila);
+            }
+            $emailsExistentes = User::whereIn('email', $emailsCandidatos)->pluck('id', 'email');
 
             $aCrear = [];
             $aAdoptar = [];
@@ -91,11 +98,23 @@ class AfiliadoPrecargaService
                     $resultado[in_array($numeroRow->estatus, ['bloqueado', 'cancelado']) ? 'saltados_bloqueado' : 'saltados_anomalia']++;
                     continue;
                 }
-                // Correo ya en BD o repetido DENTRO del chunk: users.email es UNIQUE
-                // y un duplicado en el insert masivo abortaría el chunk completo.
+                // users.email es UNIQUE y un duplicado abortaría el insert masivo del
+                // chunk completo. Un correo repetido ya NO descarta al afiliado: el
+                // corte de julio 2026 trae ~8.8k filas donde un mismo dueño registra
+                // varias tiendas con el mismo correo, y cada folio debe quedar con su
+                // cuenta porque aquí la cuenta es de la TIENDA, no de la persona. La
+                // primera conserva el correo real; las siguientes caen al sintético,
+                // que es único por folio.
+                $correoRepetido = isset($emailsExistentes[$fila['email']]) || isset($emailsEnChunk[$fila['email']]);
+                if ($correoRepetido) {
+                    $fila['email'] = $this->emailSintetico(numero: $numero);
+                }
                 if (isset($emailsExistentes[$fila['email']]) || isset($emailsEnChunk[$fila['email']])) {
                     $resultado['saltados_email_duplicado']++;
                     continue;
+                }
+                if ($correoRepetido) {
+                    $resultado['email_sintetico_por_duplicado']++;
                 }
                 $emailsEnChunk[$fila['email']] = true;
 
@@ -129,7 +148,7 @@ class AfiliadoPrecargaService
         $numero = strtoupper(trim((string)$datos['numero_anp']));
         $email = strtolower(trim((string)($datos['email'] ?? '')));
         if ($email === '') {
-            $email = strtolower($numero) . self::DOMINIO_EMAIL_SINTETICO;
+            $email = $this->emailSintetico(numero: $numero);
         }
 
         $perfilExistente = $this->affiliateProfileRepo->getFirstWhere(params: ['numero_anp' => $numero]);
@@ -232,15 +251,91 @@ class AfiliadoPrecargaService
     }
 
     /**
+     * Correo interno para el afiliado que no trae uno usable. Es único por folio,
+     * así que sirve tanto para los vacíos como para los repetidos.
+     */
+    private function emailSintetico(string $numero): string
+    {
+        return strtolower($numero) . self::DOMINIO_EMAIL_SINTETICO;
+    }
+
+    /**
      * Map one Excel row to the internal structure. Values '-' count as empty.
+     * El formato se detecta por columna: el corte propio de ANPEC trae
+     * "folio_anpec"; el export Moodle de los cortes viejos trae "username".
      */
     private function mapearFila(mixed $row, string $numero): array
+    {
+        return isset($row['folio_anpec'])
+            ? $this->mapearFilaAnpec(row: $row, numero: $numero)
+            : $this->mapearFilaMoodle(row: $row, numero: $numero);
+    }
+
+    /**
+     * Corte propio de ANPEC (julio 2026 en adelante). La dirección viene partida
+     * en cuatro columnas y se recompone; el teléfono que se guarda es el celular,
+     * que es el que sirve para WhatsApp, con el fijo como respaldo.
+     *
+     * La columna "Contraseña" del export NUNCA se lee: las cuentas nacen con una
+     * contraseña inutilizable y solo se abren cuando el afiliado las activa.
+     */
+    private function mapearFilaAnpec(mixed $row, string $numero): array
+    {
+        $email = strtolower(trim((string)($row['email'] ?? '')));
+        if ($email === '' || $email === '-') {
+            $email = $this->emailSintetico(numero: $numero);
+        }
+
+        $extras = [];
+        foreach ([
+            'cp' => 'cp',
+            'colonia' => 'colonia',
+            'municipio' => 'municipio',
+            'telefono' => 'telefono_fijo',
+            'celular' => 'celular',
+            'origen' => 'origen',
+            'id_origen' => 'id_origen',
+        ] as $columna => $clave) {
+            $valor = $this->limpiarValor($row[$columna] ?? '');
+            if ($valor !== null) {
+                $extras[$clave] = $valor;
+            }
+        }
+        $extras['email_origen'] = $email;
+
+        return [
+            'nombre' => $this->limpiarValor($row['nombre'] ?? ''),
+            'email' => $email,
+            'nombre_negocio' => $this->limpiarValor($row['negocio'] ?? ''),
+            'direccion' => $this->componerDireccion(row: $row),
+            'estado' => $this->limpiarValor($row['estado'] ?? ''),
+            'telefono_contacto' => $this->limpiarTelefono($row['celular'] ?? '')
+                ?? $this->limpiarTelefono($row['telefono'] ?? ''),
+            'datos_importacion' => $extras,
+        ];
+    }
+
+    /** Domicilio + colonia + municipio + CP en una línea, sin las partes vacías. */
+    private function componerDireccion(mixed $row): ?string
+    {
+        $partes = array_filter([
+            $this->limpiarValor($row['domicilio'] ?? ''),
+            $this->limpiarValor($row['colonia'] ?? ''),
+            $this->limpiarValor($row['municipio'] ?? ''),
+            $this->limpiarValor($row['cp'] ?? ''),
+        ]);
+
+        return $partes ? Str::limit(implode(', ', $partes), 191, '') : null;
+    }
+
+    /** Export Moodle de los cortes anteriores a julio 2026. */
+    private function mapearFilaMoodle(mixed $row, string $numero): array
     {
         $nombre = $this->limpiarValor($row['firstname'] ?? '');
         $apellido = $this->limpiarValor($row['lastname'] ?? '');
         $email = strtolower(trim((string)($row['email'] ?? '')));
         if ($email === '' || $email === '-') {
-            $email = strtolower($numero) . self::DOMINIO_EMAIL_SINTETICO;
+            $email = $this->emailSintetico(numero: $numero);
         }
 
         $extras = [];

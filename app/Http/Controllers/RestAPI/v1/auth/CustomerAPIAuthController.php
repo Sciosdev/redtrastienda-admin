@@ -14,6 +14,7 @@ use App\Events\CustomerRegisteredViaReferralEvent;
 use App\Events\EmailVerificationEvent;
 use App\Events\PasswordResetEvent;
 use App\Http\Controllers\Controller;
+use App\Imports\AfiliadosImport;
 use App\Services\ReferByEarnCustomerService;
 use App\Services\Web\CustomerAuthService;
 use App\Traits\CustomerTrait;
@@ -35,8 +36,13 @@ class CustomerAPIAuthController extends Controller
 {
     use CustomerTrait;
 
-    /** Patrón del número ANP como identidad de login (ANP + dígitos + letra final opcional). */
-    private const PATRON_NUMERO_ANP = '/^anp\d+a?$/i';
+    /**
+     * Patrón del número ANP como identidad de login. Se REFERENCIA, no se copia:
+     * cuando estaba duplicado, ampliar el del import dejaba este atrás y el
+     * login no reconocía los folios nuevos como ANP — los trataba como correo,
+     * así que el afiliado no podía entrar aunque su cuenta existiera.
+     */
+    private const PATRON_NUMERO_ANP = AfiliadosImport::PATRON_NUMERO_ANP;
 
     public function __construct(
         private readonly CustomerRepositoryInterface                 $customerRepo,

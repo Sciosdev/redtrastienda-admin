@@ -98,9 +98,10 @@ class NumeroAnpController extends BaseController
             return back();
         }
 
-        // 18.5k filas en una sola request: ampliar el límite si el hosting lo
-        // permite. Plan B documentado: partir el archivo (import idempotente).
-        @set_time_limit(600);
+        // El corte de julio 2026 son 46.8k filas (2.5x el primero): ampliar el
+        // límite si el hosting lo permite. Plan B documentado: partir el archivo
+        // en varios, que el import es idempotente y se puede correr por partes.
+        @set_time_limit(1800);
 
         $import = new AfiliadosImport(precargaService: $this->afiliadoPrecargaService);
         try {
@@ -119,6 +120,7 @@ class NumeroAnpController extends BaseController
             . ' | ' . translate('saltados_por_bloqueado') . ': ' . $r['saltados_bloqueado']
             . ' | ' . translate('saltados_por_anomalia') . ': ' . $r['saltados_anomalia']
             . ' | ' . translate('saltados_por_correo_duplicado') . ': ' . $r['saltados_email_duplicado']
+            . ' | ' . translate('correo_interno_por_duplicado') . ': ' . $r['email_sintetico_por_duplicado']
             . ' | ' . translate('saltados_sin_patron_anp') . ': ' . $r['saltados_sin_patron']
         );
         return back();
