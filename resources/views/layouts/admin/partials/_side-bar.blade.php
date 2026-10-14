@@ -801,6 +801,13 @@
                     <small class="nav-subtitle" title="">{{ translate('user_management') }}</small>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link {{ Request::is('admin/surveys*') ? 'active' : '' }}" href="{{ route('admin.surveys.index') }}">
+                        <i class="fi fi-sr-list-check"></i>
+                        <span class="aside-mini-hidden-element">{{ translate('encuestas') }}</span>
+                    </a>
+                </li>
+
                 <li class="{{ (Request::is('admin/customer/wallet*') || Request::is('admin/customer/list') || Request::is('admin/customer/view*') || Request::is('admin/reviews*') || Request::is('admin/customer/loyalty/report')) ? 'sub-menu-opened' : '' }}">
                     <a class="nav-link nav-link-toggle {{ (Request::is('admin/customer/wallet*') || Request::is('admin/customer/list') || Request::is('admin/customer/view*') || Request::is('admin/reviews*') || Request::is('admin/customer/loyalty/report')) ? 'active' : '' }}"
                        href="javascript:" title="{{ translate('customers') }}">

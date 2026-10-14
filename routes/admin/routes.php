@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\Customer\CustomerController;
 use App\Http\Controllers\Admin\NumeroAnpController;
 use App\Http\Controllers\Admin\AffiliateProfileController;
 use App\Http\Controllers\Admin\MercadoPublicacionController;
+use App\Http\Controllers\Admin\SurveyController;
 use App\Http\Controllers\Admin\Employee\EmployeeController;
 use App\Http\Controllers\Admin\Product\AttributeController;
 use App\Http\Controllers\Admin\Settings\CurrencyController;
@@ -412,6 +413,17 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('status-update', 'updateStatus')->name('status-update');
             Route::post('settings', 'updateSettings')->name('settings');
             Route::post('asignar-numero', 'assignNumero')->name('asignar-numero');
+        });
+    });
+
+    Route::group(['prefix' => 'surveys', 'as' => 'surveys.', 'middleware' => ['module:people']], function () {
+        Route::controller(SurveyController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::post('{survey}/status', 'status')->whereNumber('survey')->name('status');
+            Route::get('{survey}/responses', 'responses')->whereNumber('survey')->name('responses');
+            Route::get('{survey}/export', 'export')->whereNumber('survey')->name('export');
         });
     });
 

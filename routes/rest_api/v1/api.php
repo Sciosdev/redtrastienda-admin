@@ -32,6 +32,7 @@ use App\Http\Controllers\RestAPI\v1\ProductController;
 use App\Http\Controllers\RestAPI\v1\ReviewController;
 use App\Http\Controllers\RestAPI\v1\SellerController;
 use App\Http\Controllers\RestAPI\v1\ShippingMethodController;
+use App\Http\Controllers\RestAPI\v1\SurveyController;
 use App\Http\Controllers\RestAPI\v1\UserLoyaltyController;
 use App\Http\Controllers\RestAPI\v1\UserWalletController;
 use Illuminate\Support\Facades\Route;
@@ -270,6 +271,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api_lang']], function () {
     });
 
     Route::group(['prefix' => 'customer', 'middleware' => 'auth:api'], function () {
+        Route::prefix('surveys')->controller(SurveyController::class)->group(function () {
+            Route::get('/', 'index');
+            Route::get('{id}', 'show')->whereNumber('id');
+            Route::post('{id}/responses', 'store')->whereNumber('id');
+        });
+
         Route::controller(CustomerController::class)->group(function () {
             Route::get('info', 'info');
             Route::put('update-profile', 'update_profile');
